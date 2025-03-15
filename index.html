@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Curso de Violão do Zero ao Repertório</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <div class="container" id="content">
+        <!-- Conteúdo será carregado dinamicamente aqui -->
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCswS4sbDQC8BCg_9olRl5IgEuQr4ApV30",
+            authDomain: "agendac3-d442c.firebaseapp.com",
+            projectId: "agendac3-d442c",
+            storageBucket: "agendac3-d442c.firebasestorage.app",
+            messagingSenderId: "676214405206",
+            appId: "1:676214405206:web:f676e8e7b6e97decafbca5"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // Função para carregar HTML de um arquivo
+        async function loadHTML(file, callback) {
+            try {
+                const response = await fetch(file);
+                const text = await response.text();
+                return text;
+            } catch (error) {
+                console.error(`Erro ao carregar ${file}:`, error);
+                return `<p>Erro ao carregar o conteúdo. Tente novamente.</p>`;
+            }
+        }
+
+        // Função para injetar scripts do HTML carregado
+        function injectScripts(html) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const scripts = doc.getElementsByTagName('script');
+            for (let script of scripts) {
+                if (script.src) {
+                    const newScript = document.createElement('script');
+                    newScript.src = script.src;
+                    newScript.async = false;
+                    document.body.appendChild(newScript);
+                } else {
+                    const inlineScript = document.createElement('script');
+                    inlineScript.text = script.textContent;
+                    document.body.appendChild(inlineScript);
+                }
+            }
+            return doc.body.innerHTML; // Retorna apenas o conteúdo do body
+        }
+
+        auth.onAuthStateChanged(async (user) => {
+            const contentDiv = document.getElementById("content");
+            if (user) {
+                const telefone = user.email.split('@')[0];
+                db.collection('alunos').where('telefone', '==', telefone).get()
+                    .then(async (snapshot) => {
+                        if (!snapshot.empty) {
+                            const alunoData = snapshot.docs[0].data();
+                            if (alunoData.acesso === 'Liberado') {
+                                // Carrega o conteúdo de curso.html
+                                const cursoHTML = await loadHTML('curso.html');
+                                contentDiv.innerHTML = injectScripts(cursoHTML);
+                            } else {
+                                alert('Seu acesso está bloqueado.');
+                                auth.signOut();
+                                loadLogin();
+                            }
+                        } else {
+                            alert('Aluno não encontrado.');
+                            auth.signOut();
+                            loadLogin();
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('Erro ao verificar acesso:', error);
+                        alert('Erro ao carregar os dados.');
+                        auth.signOut();
+                        loadLogin();
+                    });
+            } else {
+                loadLogin();
+            }
+        });
+
+        async function loadLogin() {
+            const contentDiv = document.getElementById("content");
+            const loginHTML = await loadHTML('login.html');
+            contentDiv.innerHTML = injectScripts(loginHTML);
+            // Reaplica o listener do formulário após carregar login.js
+            const loginScript = document.createElement('script');
+            loginScript.src = 'login.js';
+            loginScript.onload = () => {
+                console.log('login.js recarregado');
+            };
+            document.body.appendChild(loginScript);
+        }
+
+        // Função de logout global (usada por curso.html)
+        window.logout = function() {
+            auth.signOut().then(() => {
+                loadLogin();
+            }).catch((error) => {
+                alert('Erro ao sair.');
+            });
+        };
+    </script>
+</body>
+</html>
