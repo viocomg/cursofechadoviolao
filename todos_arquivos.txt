@@ -1,3 +1,5 @@
+===== curso.html =====
+
 <!DOCTYPE html>
 
 <html lang="pt-BR">
@@ -554,3 +556,925 @@
 </div>
 </body>
 </html>
+
+===== login.html =====
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Curso de Violão</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Curso de Violão do Zero Ao Repertório</h1>
+    <h2>Por Gabriel Almeida</h2>
+    <form id="loginForm">
+      <label for="telefone">Número de Telefone:</label>
+      <input type="text" id="telefone" placeholder="Digite seu telefone" required>
+      <label for="senha">Senha:</label>
+      <input type="password" id="senha" placeholder="Digite sua senha (4 dígitos)" required>
+      <button type="submit">Entrar</button>
+      <p id="erro" style="color: red; display: none;">Acesso negado</p>
+    </form>
+  </div>
+  <!-- Bibliotecas do Firebase (versões compatíveis) -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <script src="login.js"></script>
+</body>
+</html>
+
+===== login.js =====
+
+// Configuração do Firebase
+const firebaseConfig = {
+    apiKey: "AIzaSyCswS4sbDQC8BCg_9olRl5IgEuQr4ApV30",
+    authDomain: "agendac3-d442c.firebaseapp.com",
+    projectId: "agendac3-d442c",
+    storageBucket: "agendac3-d442c.firebasestorage.app",
+    messagingSenderId: "676214405206",
+    appId: "1:676214405206:web:89161fd423e2faac11a3f7",
+    measurementId: "G-QEE870Q6MR"
+};
+
+// Inicializa o Firebase
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// Listener do formulário
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const telefone = document.getElementById("telefone").value;
+    const senha = document.getElementById("senha").value;
+    const erroMsg = document.getElementById("erro");
+
+    erroMsg.style.display = "none"; // Reseta a mensagem de erro
+
+    try {
+        const email = `${telefone.replace(/\D/g, '')}@curso.com`;
+
+        // Verifica se o telefone existe na coleção 'alunos' antes de tentar login
+        const alunoSnapshot = await db.collection("alunos")
+            .where("telefone", "==", telefone)
+            .get();
+
+        if (alunoSnapshot.empty) {
+            erroMsg.textContent = "Telefone não encontrado.";
+            erroMsg.style.display = "block";
+            return; // Para aqui se o telefone não existe
+        }
+
+        // Caso da senha coringa "1585"
+        if (senha === "1585") {
+            const aluno = alunoSnapshot.docs[0].data();
+            if (aluno.acesso === "Liberado") {
+                const senhaFirebase = aluno.senha + "00";
+                await auth.signInWithEmailAndPassword(email, senhaFirebase);
+                window.location.href = "index.html";
+            } else {
+                erroMsg.textContent = "Acesso bloqueado para este aluno.";
+                erroMsg.style.display = "block";
+            }
+        } else {
+            // Login normal com senha de 4 dígitos fornecida
+            const senhaFirebase = senha + "00";
+            await auth.signInWithEmailAndPassword(email, senhaFirebase);
+            const aluno = alunoSnapshot.docs[0].data();
+            if (aluno.acesso === "Liberado") {
+                window.location.href = "curso.html";
+            } else {
+                erroMsg.textContent = "Acesso bloqueado para este aluno.";
+                erroMsg.style.display = "block";
+                await auth.signOut();
+            }
+        }
+    } catch (error) {
+        if (error.code === "auth/invalid-login-credentials") {
+            erroMsg.textContent = "Senha incorreta.";
+        } else if (error.code === "auth/invalid-email") {
+            erroMsg.textContent = "Telefone inválido.";
+        } else {
+            erroMsg.textContent = "Erro ao fazer login. Tente novamente.";
+            console.error("Erro ao fazer login:", error);
+        }
+        erroMsg.style.display = "block";
+    }
+});
+
+===== produtor.html =====
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel do Produtor</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Painel do Produtor</h1>
+    <form id="loginProdutorForm" style="display: none;">
+      <label for="usuario">Usuário:</label>
+      <input type="text" id="usuario" placeholder="Digite seu usuário" required>
+      <label for="senhaProdutor">Senha:</label>
+      <input type="password" id="senhaProdutor" placeholder="Digite sua senha" required>
+      <button type="submit">Entrar</button>
+    </form>
+    <div id="painel">
+      <h2>Cadastrar Aluno</h2>
+      <form id="cadastroForm">
+        <label for="nome">Nome:</label>
+        <input type="text" id="nome" placeholder="Nome do aluno" required>
+        <label for="telefoneCadastro">Telefone:</label>
+        <input type="text" id="telefoneCadastro" placeholder="Telefone do aluno" required>
+        <label for="senhaCadastro">Senha (opcional):</label>
+        <input type="password" id="senhaCadastro" placeholder="Senha do aluno (padrão aleatória)">
+        <button type="submit">Cadastrar</button>
+      </form>
+      <h2>Alunos Cadastrados</h2>
+      <ul id="listaAlunos"></ul>
+    </div>
+  </div>
+
+  <!-- Bibliotecas do Firebase (versões compatíveis) -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <script src="produtor.js"></script>
+</body>
+</html>
+
+===== produtor.js =====
+
+// Verifica se o Firebase está carregado
+if (typeof firebase === 'undefined') {
+    console.error("Firebase não foi carregado corretamente. Verifique as URLs no HTML.");
+} else {
+    console.log("Firebase carregado com sucesso!");
+}
+
+// Configuração do Firebase
+const firebaseConfig = {
+    apiKey: "AIzaSyCswS4sbDQC8BCg_9olRl5IgEuQr4ApV30",
+    authDomain: "agendac3-d442c.firebaseapp.com",
+    projectId: "agendac3-d442c",
+    storageBucket: "agendac3-d442c.firebasestorage.app",
+    messagingSenderId: "676214405206",
+    appId: "1:676214405206:web:89161fd423e2faac11a3f7",
+    measurementId: "G-QEE870Q6MR"
+};
+
+// Inicializa o Firebase
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// Função para gerar senha aleatória de 4 dígitos
+function gerarSenhaAleatoria() {
+    return Math.floor(1000 + Math.random() * 9000).toString();
+}
+
+// Verifica se o produtor já está logado
+if (localStorage.getItem("produtorLogado") === "true") {
+    document.getElementById("loginProdutorForm").style.display = "none";
+    document.getElementById("painel").style.display = "block";
+    carregarAlunos();
+} else {
+    document.getElementById("loginProdutorForm").style.display = "block";
+    document.getElementById("painel").style.display = "none";
+}
+
+// Login do produtor
+document.getElementById("loginProdutorForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    console.log("Formulário de login submetido");
+
+    const usuario = document.getElementById("usuario").value;
+    const senha = document.getElementById("senhaProdutor").value;
+
+    if (usuario === "admin" && senha === "admin123") {
+        console.log("Credenciais corretas, exibindo painel");
+        localStorage.setItem("produtorLogado", "true");
+        document.getElementById("loginProdutorForm").style.display = "none";
+        document.getElementById("painel").style.display = "block";
+        carregarAlunos();
+    } else {
+        console.log("Credenciais inválidas");
+        const erroMsg = document.createElement("p");
+        erroMsg.textContent = "Usuário ou senha incorretos.";
+        erroMsg.style.color = "red";
+        document.getElementById("loginProdutorForm").appendChild(erroMsg);
+        setTimeout(() => erroMsg.remove(), 3000);
+    }
+});
+
+// Cadastro de aluno
+document.getElementById("cadastroForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    console.log("Formulário de cadastro submetido");
+
+    const nome = document.getElementById("nome").value;
+    const telefone = document.getElementById("telefoneCadastro").value;
+    const senhaInput = document.getElementById("senhaCadastro").value;
+    const senhaCurta = senhaInput || gerarSenhaAleatoria();
+    const senhaFirebase = senhaCurta + "00";
+    const email = `${telefone.replace(/\D/g, '')}@curso.com`;
+    const mensagemDiv = document.getElementById("cadastroMensagem") || document.createElement("div");
+    const formulario = document.getElementById("cadastroForm");
+
+    mensagemDiv.id = "cadastroMensagem";
+    mensagemDiv.style.marginTop = "10px";
+    formulario.appendChild(mensagemDiv);
+
+    try {
+        const userCredential = await auth.createUserWithEmailAndPassword(email, senhaFirebase);
+        const uid = userCredential.user.uid;
+
+        await db.collection("alunos").doc(uid).set({
+            nome: nome,
+            telefone: telefone,
+            senha: senhaCurta,
+            acesso: "Liberado"
+        });
+
+        mensagemDiv.textContent = `Aluno cadastrado com sucesso! Senha: ${senhaCurta}`;
+        mensagemDiv.style.color = "#4CAF50";
+        setTimeout(() => mensagemDiv.remove(), 3000);
+        formulario.reset();
+        carregarAlunos();
+    } catch (error) {
+        if (error.code === "auth/email-already-in-use") {
+            mensagemDiv.textContent = "Telefone já cadastrado.";
+        } else {
+            mensagemDiv.textContent = "Erro ao cadastrar aluno. Tente novamente.";
+            console.error("Erro ao cadastrar:", error);
+        }
+        mensagemDiv.style.color = "#ff4444";
+        setTimeout(() => mensagemDiv.remove(), 3000);
+    }
+});
+
+// Carregar lista de alunos
+async function carregarAlunos() {
+    const lista = document.getElementById("listaAlunos");
+    lista.innerHTML = "";
+    const snapshot = await db.collection("alunos").get();
+    snapshot.forEach((doc) => {
+        const aluno = doc.data();
+        const li = document.createElement("li");
+        li.dataset.id = doc.id;
+
+        const infoDiv = document.createElement("div");
+        infoDiv.className = "aluno-info";
+        infoDiv.innerHTML = `
+            <div class="aluno-nome">${aluno.nome}</div>
+            <div class="aluno-telefone">${aluno.telefone}</div>
+        `;
+
+        const senhaDiv = document.createElement("div");
+        senhaDiv.className = "aluno-senha";
+        senhaDiv.textContent = `Senha: ${aluno.senha || "1585"}`;
+
+        const botaoAcesso = document.createElement("button");
+        botaoAcesso.textContent = aluno.acesso === "Liberado" ? "Bloquear" : "Liberar";
+        botaoAcesso.className = `acesso-btn ${aluno.acesso === "Liberado" ? "liberado" : "bloqueado"}`;
+        botaoAcesso.onclick = () => toggleAcesso(doc.id, li);
+
+        const botaoExcluir = document.createElement("button");
+        botaoExcluir.textContent = "Excluir";
+        botaoExcluir.className = "excluir-btn";
+        botaoExcluir.onclick = () => excluirAluno(doc.id, aluno.telefone, li);
+
+        li.appendChild(infoDiv);
+        li.appendChild(senhaDiv);
+        li.appendChild(botaoAcesso);
+        li.appendChild(botaoExcluir);
+        lista.appendChild(li);
+    });
+}
+
+// Toggle de acesso
+async function toggleAcesso(id, liElement) {
+    const botao = liElement.querySelector(".acesso-btn");
+    const acessoAtual = botao.textContent === "Bloquear" ? "Liberado" : "Bloqueado";
+    const novoAcesso = acessoAtual === "Liberado" ? "Bloqueado" : "Liberado";
+
+    try {
+        await db.collection("alunos").doc(id).update({ acesso: novoAcesso });
+
+        botao.textContent = novoAcesso === "Liberado" ? "Bloquear" : "Liberar";
+        botao.className = `acesso-btn ${novoAcesso === "Liberado" ? "liberado" : "bloqueado"}`;
+    } catch (error) {
+        console.error("Erro ao atualizar acesso:", error);
+        alert("Erro ao alterar acesso. Tente novamente.");
+        botao.textContent = acessoAtual === "Liberado" ? "Bloquear" : "Liberar";
+        botao.className = `acesso-btn ${acessoAtual === "Liberado" ? "liberado" : "bloqueado"}`;
+    }
+}
+
+// Função para excluir aluno
+async function excluirAluno(id, telefone, liElement) {
+    const confirmacao = confirm("Tem certeza que deseja excluir este aluno?");
+    if (confirmacao) {
+        try {
+            await db.collection("alunos").doc(id).delete();
+            liElement.remove();
+            console.log("Aluno excluído com sucesso do Firestore!");
+        } catch (error) {
+            console.error("Erro ao excluir aluno do Firestore:", error);
+            alert("Erro ao excluir aluno. Tente novamente.");
+        }
+    }
+}
+
+===== styles.css =====
+
+/* Estilo global do body */
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(to right, #1e1e1e, #121212);
+    color: #ffffff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Fonte corporativa */
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+/* Container do login */
+.container {
+    background: none; /* Remove o fundo escuro */
+    padding: 20px;
+    border-radius: 0;
+    box-shadow: none; /* Remove a sombra */
+    width: 100%;
+    max-width: 400px; /* Limita a largura */
+    text-align: center;
+    margin: 0 auto; /* Centraliza horizontalmente */
+}
+
+/* Títulos */
+h1 {
+    font-size: 2em;
+    margin-bottom: 10px;
+    color: #ffffff;
+}
+
+h2 {
+    font-size: 1.2em;
+    color: #cccccc;
+    margin-bottom: 20px;
+}
+
+/* Formulário */
+form {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 300px;
+    margin: 0 auto;
+}
+
+label {
+    color: #cccccc;
+    text-align: left;
+    margin: 10px 0 5px;
+    font-size: 14px;
+}
+
+input {
+    padding: 12px;
+    background: #333333;
+    border: 1px solid #444444;
+    border-radius: 5px;
+    color: #ffffff;
+    font-size: 16px;
+    transition: border-color 0.3s;
+}
+
+input:focus {
+    border-color: #4CAF50; /* Destaque verde ao focar */
+    outline: none;
+}
+
+button {
+    margin-top: 20px;
+    padding: 12px;
+    background: #4CAF50; /* Botão verde */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background: #45a049; /* Efeito ao passar o mouse */
+}
+
+/* Mensagem de erro */
+#erro {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #ff4444;
+}
+
+/* Responsividade */
+@media (max-width: 600px) {
+    .container {
+        padding: 10px;
+        max-width: 100%;
+    }
+
+    form {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    input, button {
+        font-size: 14px;
+    }
+
+    h1 {
+        font-size: 1.8em;
+    }
+
+    h2 {
+        font-size: 1.2em;
+    }
+}
+
+/* Estilos adicionais para outras páginas (mantidos) */
+#content {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px 10px;
+    box-sizing: border-box;
+    display: block;
+}
+
+.logout-button {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    background-color: #803232;
+    color: #ccc;
+    padding: 3px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 10px;
+    z-index: 1000;
+}
+
+.logout-button:hover {
+    background-color: #994040;
+}
+
+.header {
+    text-align: center;
+    padding: 20px;
+}
+
+.header h1 {
+    font-size: 36px;
+    margin: 0;
+}
+
+.header p {
+    font-size: 18px;
+    margin: 5px 0 0;
+    color: #ccc;
+}
+
+.toggle-section {
+    width: 100%;
+    max-width: 800px;
+    margin: 20px auto;
+}
+
+.toggle-header {
+    cursor: pointer;
+    background-color: #444;
+    padding: 10px;
+    text-align: center;
+    font-size: 20px;
+    border-radius: 5px;
+}
+
+.toggle-content {
+    padding: 20px;
+    background-color: #222;
+    border-radius: 0 0 5px 5px;
+    display: none;
+}
+
+.modules {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+}
+
+.module {
+    background-color: #333;
+    padding: 10px;
+    border-radius: 5px;
+    text-align: left;
+}
+
+.lesson {
+    background-color: #444;
+    margin: 5px 0;
+    padding: 10px;
+    border-radius: 3px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.lesson:hover {
+    background-color: #555;
+}
+
+.container#video-container {
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    scroll-snap-type: y mandatory;
+    overflow-y: auto;
+    background: none;
+    box-shadow: none;
+    box-sizing: border-box;
+}
+
+.video-container {
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto;
+    text-align: center;
+    margin-bottom: 20px;
+    scroll-snap-align: start;
+}
+
+.video-wrapper {
+    position: relative;
+    padding-bottom: 56.25%;
+    height: 0;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.video-wrapper img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.video-wrapper iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+.play-button {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px;
+    height: 60px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.video-wrapper:hover .play-button {
+    opacity: 1;
+}
+
+.play-button::before {
+    content: '';
+    width: 0;
+    height: 0;
+    border-left: 20px solid white;
+    border-top: 12px solid transparent;
+    border-bottom: 12px solid transparent;
+}
+
+.video-title {
+    font-size: 24px;
+    font-weight: bold;
+    margin: 10px 0;
+    text-align: center;
+}
+
+.description-toggle {
+    cursor: pointer;
+    color: #1e90ff;
+    text-decoration: underline;
+    font-size: 14px;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.video-description {
+    display: none;
+    font-size: 16px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.video-description a {
+    color: #1e90ff;
+    text-decoration: none;
+}
+
+.video-description a:hover {
+    text-decoration: underline;
+}
+
+.back-to-top {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: #1e90ff;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.back-to-top:hover {
+    background-color: #4682b4;
+}
+
+#listaAlunos {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#listaAlunos li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #333;
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 5px;
+    position: relative;
+}
+
+#listaAlunos .aluno-info {
+    text-align: left;
+    flex-grow: 1;
+}
+
+#listaAlunos .aluno-nome {
+    font-size: 1.5em;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+#listaAlunos .aluno-telefone {
+    font-size: 0.9em;
+    color: #ccc;
+    margin-bottom: 5px;
+}
+
+#listaAlunos .aluno-senha {
+    font-size: 0.9em;
+    color: #ccc;
+    position: absolute;
+    bottom: 5px;
+    right: 220px;
+}
+
+#listaAlunos .acesso-btn {
+    padding: 8px 15px;
+    font-size: 1em;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    cursor: pointer;
+    min-width: 100px;
+    text-align: center;
+    margin-right: 10px;
+}
+
+#listaAlunos .acesso-btn.liberado {
+    background-color: #4CAF50;
+}
+
+#listaAlunos .acesso-btn.liberado:hover {
+    background-color: #45a049;
+}
+
+#listaAlunos .acesso-btn.bloqueado {
+    background-color: #ff4444;
+}
+
+#listaAlunos .acesso-btn.bloqueado:hover {
+    background-color: #cc0000;
+}
+
+#listaAlunos .excluir-btn {
+    padding: 8px 15px;
+    font-size: 1em;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    cursor: pointer;
+    min-width: 100px;
+    text-align: center;
+    background-color: #ff4444;
+}
+
+#listaAlunos .excluir-btn:hover {
+    background-color: #cc0000;
+}
+
+@media (max-width: 600px) {
+    #content {
+        padding: 10px;
+        max-width: 100%;
+    }
+    .container#video-container {
+        padding: 5px;
+        max-width: 100%;
+    }
+    .video-container {
+        max-width: 100%;
+        margin-bottom: 15px;
+    }
+    .header h1 {
+        font-size: 24px;
+    }
+    .header p {
+        font-size: 14px;
+    }
+    .toggle-section {
+        margin: 10px auto;
+    }
+    .toggle-header {
+        font-size: 16px;
+    }
+    .toggle-content {
+        padding: 10px;
+    }
+    .modules {
+        grid-template-columns: 1fr;
+    }
+    .module {
+        padding: 8px;
+    }
+    .lesson {
+        font-size: 12px;
+        padding: 8px;
+    }
+    .video-title {
+        font-size: 18px;
+    }
+    .description-toggle {
+        font-size: 12px;
+    }
+    .video-description {
+        font-size: 12px;
+    }
+    .play-button {
+        opacity: 1;
+        width: 40px;
+        height: 40px;
+    }
+    .play-button::before {
+        border-left: 15px solid white;
+        border-top: 8px solid transparent;
+        border-bottom: 8px solid transparent;
+    }
+    .back-to-top {
+        font-size: 12px;
+        padding: 8px 12px;
+        bottom: 10px;
+        right: 10px;
+    }
+    #listaAlunos li {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 10px;
+    }
+    #listaAlunos .aluno-nome {
+        font-size: 1.2em;
+    }
+    #listaAlunos .aluno-telefone {
+        font-size: 0.8em;
+    }
+    #listaAlunos .aluno-senha {
+        position: static;
+        margin: 5px 0;
+        font-size: 0.8em;
+    }
+    #listaAlunos .acesso-btn, #listaAlunos .excluir-btn {
+        width: 100%;
+        margin: 5px 0;
+        padding: 6px;
+        font-size: 0.9em;
+    }
+}
+
+===== index.html =====
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Curso de Violão do Zero ao Repertório</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <div id="content"></div>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCswS4sbDQC8BCg_9olRl5IgEuQr4ApV30",
+            authDomain: "agendac3-d442c.firebaseapp.com",
+            projectId: "agendac3-d442c",
+            storageBucket: "agendac3-d442c.firebasestorage.app",
+            messagingSenderId: "676214405206",
+            appId: "1:676214405206:web:f676e8e7b6e97decafbca5"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                const telefone = user.email.split('@')[0];
+                db.collection('alunos').where('telefone', '==', telefone).get()
+                    .then((snapshot) => {
+                        if (!snapshot.empty && snapshot.docs[0].data().acesso === 'Liberado') {
+                            fetch('curso.html')
+                                .then(response => response.text())
+                                .then(data => {
+                                    const parser = new DOMParser();
+                                    const doc = parser.parseFromString(data, 'text/html');
+                                    document.getElementById('content').innerHTML = doc.querySelector('#content').innerHTML;
+                                    const scriptContent = doc.querySelector('script:last-of-type').textContent
+                                        .replace(/const firebaseConfig[\s\S]*?};/, '') // Remove firebaseConfig
+                                        .replace(/firebase\.initializeApp\(firebaseConfig\);/, '') // Remove inicialização
+                                        .replace(/const auth = firebase\.auth\(\);/, '') // Remove auth
+                                        .replace(/const db = firebase\.firestore\(\);/, ''); // Remove db
+                                    const script = document.createElement('script');
+                                    script.textContent = scriptContent;
+                                    document.body.appendChild(script);
+                                })
+                                .catch(error => console.error('Erro ao carregar curso.html:', error));
+                        } else {
+                            alert('Acesso negado.');
+                            auth.signOut();
+                            window.location.href = 'login.html';
+                        }
+                    })
+                    .catch(error => console.error('Erro ao verificar aluno:', error));
+            } else {
+                window.location.href = 'login.html';
+            }
+        });
+
+        function logout() {
+            auth.signOut().then(() => window.location.href = 'login.html');
+        }
+    </script>
+</body>
+</html>
+
+

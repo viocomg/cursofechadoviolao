@@ -43,7 +43,7 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
             if (aluno.acesso === "Liberado") {
                 const senhaFirebase = aluno.senha + "00";
                 await auth.signInWithEmailAndPassword(email, senhaFirebase);
-                window.location.href = "curso.html";
+                window.location.href = "index.html";
             } else {
                 erroMsg.textContent = "Acesso bloqueado para este aluno.";
                 erroMsg.style.display = "block";
