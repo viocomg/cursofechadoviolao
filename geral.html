@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Curso de Violão</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Violão Depois dos 40</h1>
+            <p>Página Geral</p>
+        </div>
+        <div class="toggle-section">
+            <button class="toggle-header" style="background-color: #4CAF50;" onclick="openModal('modal1')">Como funcionam as videochamadas</button>
+            <button class="toggle-header" style="background-color: #1e90ff;" onclick="openModal('modal2')">Como entrar na videochamada</button>
+            <button class="toggle-header" style="background-color: #ff4444;" onclick="openModal('modal3')">Como funciona nosso grupo do WhatsApp</button>
+            <button class="toggle-header" style="background-color: #ffd700;" onclick="window.location.href='https://gabrielalmeidac3.github.io/musicas_violao/'">Site Aulas Músicas</button>
+            <button class="toggle-header" style="background-color: #ff69b4;" onclick="window.location.href='https://gabrielalmeidac3.github.io/cursoviolaogabriel/curso'">Curso Completo do Zero ao Repertório</button>
+        </div>
+    </div>
+
+    <!-- Modal 1 -->
+    <div id="modal1" class="modal">
+        <div class="modal-content">
+            <p>As videochamadas são realizadas uma vez por semana.<br>Segunda-feira 20h (8 horas da noite).<br><br>
+            Nelas você vai poder falar diretamente comigo.<br><br>
+            Eu vou saber como você está no violão.<br><br>
+            E vou te passar qual o teu objetivo pra semana.</p>
+            <button class="modal-close" onclick="closeModal('modal1')">Voltar</button>
+        </div>
+    </div>
+
+    <!-- Modal 2 -->
+    <div id="modal2" class="modal">
+        <div class="modal-content">
+            <iframe width="100%" height="315" src="https://www.youtube.com/embed/-pktnbKCK_g" frameborder="0" allowfullscreen></iframe>
+            <button class="modal-close" onclick="closeModal('modal2')">Voltar</button>
+        </div>
+    </div>
+
+    <!-- Modal 3 -->
+    <div id="modal3" class="modal">
+        <div class="modal-content">
+            <p>Toda terça e quinta você pode mandar seu vídeo ou seu áudio tocando pra eu analisar.<br><br>
+            Às vezes eu não consigo responder todos no mesmo dia (na terça ou na quinta), mas no próximo dia eu respondo.<br><br>
+            Nos outros dias você pode mandar vídeos e áudios também pra compartilhar com os colegas.<br><br>
+            Mas os dias em que eu vou analisar mesmo é só terça e quinta.</p>
+            <button class="modal-close" onclick="closeModal('modal3')">Voltar</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
