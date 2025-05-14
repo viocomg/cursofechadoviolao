@@ -1,13 +1,14 @@
 // Configuração do Firebase
-const firebaseConfig = {
-    apiKey: "AIzaSyCswS4sbDQC8BCg_9olRl5IgEuQr4ApV30",
-    authDomain: "agendac3-d442c.firebaseapp.com",
-    projectId: "agendac3-d442c",
-    storageBucket: "agendac3-d442c.firebasestorage.app",
-    messagingSenderId: "676214405206",
-    appId: "1:676214405206:web:89161fd423e2faac11a3f7",
-    measurementId: "G-QEE870Q6MR"
-};
+fetch('broken-silence-aaa9.2gabrielekaline.workers.dev')
+  .then(response => response.json())
+  .then(firebaseConfig => {
+    // Agora você tem as credenciais do Firebase
+    console.log(firebaseConfig);
+
+    // Inicialize o Firebase com as configurações recebidas
+    firebase.initializeApp(firebaseConfig);
+  })
+  .catch(error => console.error('Erro ao carregar configuração do Firebase:', error));
 
 // Inicializa o Firebase
 firebase.initializeApp(firebaseConfig);
