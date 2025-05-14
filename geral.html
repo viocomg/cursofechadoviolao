@@ -6,18 +6,33 @@
     <title>Curso de Violão</title>
     <link rel="stylesheet" href="styles.css">
 </head>
+<style>
+    body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin-top: 40px;
+        background: #121212; /* Cor de fundo escura, como no seu estilo */
+    }
+    img {
+        max-width: 100%; /* Para garantir que a imagem não ultrapasse a tela */
+        height: auto;
+    }
+</style>
+
 <body>
     <div class="container">
         <div class="header">
-            <h1>Violão Depois dos 40</h1>
+            <img src="img.webp" alt="Descrição da imagem" />
             <p>Página Geral</p>
         </div>
         <div class="toggle-section">
-            <button class="toggle-header" style="background-color: #4CAF50;" onclick="openModal('modal1')">Como funcionam as videochamadas</button>
-            <button class="toggle-header" style="background-color: #1e90ff;" onclick="openModal('modal2')">Como entrar na videochamada</button>
-            <button class="toggle-header" style="background-color: #ff4444;" onclick="openModal('modal3')">Como funciona nosso grupo do WhatsApp</button>
-            <button class="toggle-header" style="background-color: #ffd700;" onclick="window.location.href='https://gabrielalmeidac3.github.io/musicas_violao/'">Site Aulas Músicas</button>
-            <button class="toggle-header" style="background-color: #ff69b4;" onclick="window.location.href='https://gabrielalmeidac3.github.io/cursoviolaogabriel/curso'">Curso Completo do Zero ao Repertório</button>
+            <button class="toggle-header" style="background-color: #319234;" onclick="openModal('modal1')">Como funcionam as videochamadas</button>
+            <button class="toggle-header" style="background-color: #197de1;" onclick="openModal('modal2')">Como entrar na videochamada</button>
+            <button class="toggle-header" style="background-color: #b52121;" onclick="openModal('modal3')">Como funciona nosso grupo do WhatsApp</button>
+            <button class="toggle-header" style="background-color: #a8931d;" onclick="window.location.href='https://gabrielalmeidac3.github.io/musicas_violao/'">Site Aulas Músicas</button>
+            <button class="toggle-header" style="background-color: #b42a6f;" onclick="window.location.href='https://gabrielalmeidac3.github.io/cursoviolaogabriel/curso'">Curso Completo do Zero ao Repertório</button>
         </div>
     </div>
 
