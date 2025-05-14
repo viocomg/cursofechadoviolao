@@ -1,4 +1,4 @@
-// Configuração do Firebase
+// Configuração do Firebase usando cloudflare workers com firebase conta 2gabkali
 fetch('broken-silence-aaa9.2gabrielekaline.workers.dev')
   .then(response => response.json())
   .then(firebaseConfig => {
