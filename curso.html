@@ -31,6 +31,7 @@
   </div>
   
 <div class="toggle-section">
+<div><p style="color: gray; text-align: center;">Obs: M1, M2, M3 e M4 são os módulos; Exemplo: M1 = Módulo 1</p></div>    
 <div class="toggle-header" onclick="toggleSection(this)">Procurar aulas</div>
 <div class="toggle-content">
 <div class="modules">
@@ -38,6 +39,101 @@
 </div>
 </div>
 </div>
+<div class="toggle-section">
+
+<!-- Início do botão nível -->
+
+<div class="toggle-section">
+    <div class="toggle-header toggle-nivel" onclick="toggleNivel()">
+      Veja em qual nível de violão você está
+    </div>
+    <div class="toggle-content" id="nivelContent">
+      <div class="nivel nivel-0">
+        <div class="nivel-titulo">NÍVEL 0 - Ainda não sabe afinar, e ainda não sabe pelo menos 3 acordes e um ritmo</div>
+        <div class="nivel-info">
+          <div class="nivel-subtitulo">Necessário para subir de nível:</div>
+          <ul>
+            <li>Como segurar, afinar e entender o braço do violão</li>
+            <li>O que são acordes e como tocá-los</li>
+            <li>Preparação para tocar seus primeiros ritmos</li>
+            <li>Ritmo Guarânia e/ou Valsa</li>
+          </ul>
+          <p><strong>Aulas:</strong> Da aula M1 1 até a aula M1 17</p>
+        </div>
+      </div>
+  
+      <div class="nivel nivel-1">
+        <div class="nivel-titulo">NÍVEL 1 - Já sabe afinar, já sabe pelo menos 3 acordes e um ritmo mas ainda não toca nenhuma música</div>
+        <div class="nivel-info">
+          <div class="nivel-subtitulo">Necessário para subir de nível:</div>
+          <ul>
+            <li>Tocar sua primeira música no violão sem precisar cantar ainda</li>
+            <li>Juntar ritmo e acordes com tranquilidade</li>
+          </ul>
+          <p><strong>Aulas:</strong> Da aula M1 18 até a aula 24</p>
+        </div>
+      </div>
+  
+      <div class="nivel nivel-2">
+        <div class="nivel-titulo">NÍVEL 2 - Já toca pelo menos uma música no violão mas não canta ainda</div>
+        <div class="nivel-info">
+          <div class="nivel-subtitulo">Necessário para subir de nível:</div>
+          <ul>
+            <li>Tocar sua primeira música no violão cantando junto</li>
+            <li>Aprender vários ritmos, acordes e músicas novas</li>
+          </ul>
+          <p><strong>Aulas:</strong> Da aula M1 25 até todo o Módulo 2</p>
+        </div>
+      </div>
+  
+      <div class="nivel nivel-3">
+        <div class="nivel-titulo">NÍVEL 3 - Já toca pelo menos sua primeira música</div>
+        <div class="nivel-info">
+          <div class="nivel-subtitulo">Necessário para subir de nível:</div>
+          <ul>
+            <li>Pestanas e dedilhados</li>
+          </ul>
+          <p><strong>Aulas:</strong> Da aula M3 1 até a aula 4</p>
+        </div>
+      </div>
+  
+      <div class="nivel nivel-4">
+        <div class="nivel-titulo">NÍVEL 4 - Já toca músicas usando pestanas e dedilhados</div>
+        <div class="nivel-info">
+          <div class="nivel-subtitulo">Necessário para subir de nível:</div>
+          <ul>
+            <li>Solos (ler tablaturas e tocar)</li>
+            <li>O básico da teoria musical (campo harmônico, escala cromática, intervalos)</li>
+            <li>Tocar de ouvido</li>
+          </ul>
+          <p><strong>Aulas:</strong> Da aula M3 5 até todo o Módulo 4</p>
+        </div>
+      </div>
+  
+      <div class="nivel nivel-5">
+        <div class="nivel-titulo">NÍVEL 5 - Já sabe solos, teoria musical e tocar de ouvido</div>
+        <div class="nivel-info">
+          <p><strong>Parabéns!</strong> Você chegou ao último nível atual.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    function toggleNivel() {
+      const content = document.getElementById("nivelContent");
+      const toggleBtn = document.querySelector(".toggle-nivel");
+      const aberto = content.style.display === "block";
+      content.style.display = aberto ? "none" : "block";
+      toggleBtn.textContent = aberto
+        ? "Veja em qual nível de violão você está"
+        : "Veja em qual nível de violão você está (fechar)";
+    }
+  </script>
+  
+
+<!-- Fim do botão nível -->
+
 <div class="container" id="video-container">
 <div class="video-container" id="lesson-0">
 <div class="video-wrapper" data-src="https://www.youtube.com/embed/SVsIRM4-q3Q" onclick="loadVideo(this)">
