@@ -1,19 +1,16 @@
-// Configuração do Firebase usando cloudflare workers com firebase conta 2gabkali
 fetch('broken-silence-aaa9.2gabrielekaline.workers.dev')
   .then(response => response.json())
   .then(firebaseConfig => {
-    // Agora você tem as credenciais do Firebase
-    console.log(firebaseConfig);
-
-    // Inicialize o Firebase com as configurações recebidas
+    // Inicializa o Firebase com a configuração recebida do Worker
     firebase.initializeApp(firebaseConfig);
+
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // Agora você pode usar 'auth' e 'db' normalmente
+    console.log('Firebase inicializado com configuração segura!');
   })
   .catch(error => console.error('Erro ao carregar configuração do Firebase:', error));
-
-// Inicializa o Firebase
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
 
 // Listener do formulário
 document.getElementById("loginForm").addEventListener("submit", async (e) => {
