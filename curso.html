@@ -605,25 +605,9 @@
 </div>
 </div>
 <div class="back-to-top" onclick="scrollToTop()">Voltar ao topo</div>
-<!-- Versões compatíveis do Firebase -->
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
 <script>
-    fetch('broken-silence-aaa9.2gabrielekaline.workers.dev')
-      .then(response => response.json())
-      .then(firebaseConfig => {
-        // Inicializa o Firebase com a configuração recebida do Worker
-        firebase.initializeApp(firebaseConfig);
-
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-
-        // Agora você pode usar 'auth' e 'db' normalmente
-        console.log('Firebase inicializado com configuração segura!');
-      })
-      .catch(error => console.error('Erro ao carregar configuração do Firebase:', error));
-
+    
     
     document.body.style.display = 'block';
     document.body.style.visibility = 'visible';

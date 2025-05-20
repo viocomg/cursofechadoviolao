@@ -1,3 +1,8 @@
+initFirebase();
+
+let auth;
+let db;
+
 // Verifica se o Firebase está carregado
 if (typeof firebase === 'undefined') {
     console.error("Firebase não foi carregado corretamente. Verifique as URLs no HTML.");
@@ -5,34 +10,38 @@ if (typeof firebase === 'undefined') {
     console.log("Firebase carregado com sucesso!");
 }
 
-fetch('broken-silence-aaa9.2gabrielekaline.workers.dev')
-  .then(response => response.json())
-  .then(firebaseConfig => {
-    // Inicializa o Firebase com a configuração recebida do Worker
-    firebase.initializeApp(firebaseConfig);
-
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-
-    // Agora você pode usar 'auth' e 'db' normalmente
-    console.log('Firebase inicializado com configuração segura!');
-  })
-  .catch(error => console.error('Erro ao carregar configuração do Firebase:', error));
+async function initFirebase() {
+    try {
+      const response = await fetch('https://broken-silence-aaa9.2gabrielekaline.workers.dev');
+      const firebaseConfig = await response.json();
+  
+      firebase.initializeApp(firebaseConfig);
+      auth = firebase.auth();
+      db = firebase.firestore();
+  
+      console.log('Firebase inicializado com configuração segura!');
+  
+      if (localStorage.getItem("produtorLogado") === "true") {
+        document.getElementById("loginProdutorForm").style.display = "none";
+        document.getElementById("painel").style.display = "block";
+        carregarAlunos(); // CHAMA SÓ AQUI, quando db e auth já estão prontos
+      } else {
+        document.getElementById("loginProdutorForm").style.display = "block";
+        document.getElementById("painel").style.display = "none";
+      }
+    } catch (error) {
+      console.error('Erro ao carregar configuração do Firebase:', error);
+    }
+  }
+  
+  
 
 // Função para gerar senha aleatória de 4 dígitos
 function gerarSenhaAleatoria() {
     return Math.floor(1000 + Math.random() * 9000).toString();
 }
 
-// Verifica se o produtor já está logado
-if (localStorage.getItem("produtorLogado") === "true") {
-    document.getElementById("loginProdutorForm").style.display = "none";
-    document.getElementById("painel").style.display = "block";
-    carregarAlunos();
-} else {
-    document.getElementById("loginProdutorForm").style.display = "block";
-    document.getElementById("painel").style.display = "none";
-}
+
 
 // Login do produtor
 document.getElementById("loginProdutorForm").addEventListener("submit", (e) => {
