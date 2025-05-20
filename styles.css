@@ -504,6 +504,8 @@ button:hover {
     }
 }
 
+/* PÁGINA GERAL */
+
 .modal {
     display: none;
     position: fixed;
@@ -515,25 +517,27 @@ button:hover {
     justify-content: center;
     align-items: center;
     z-index: 1000;
+    overflow-y: auto;
 }
 
 .modal-content {
-    background: #222;
+    position: relative;
+    max-height: 90vh;
     padding: 20px;
+    padding-bottom: 60px; /* espaço para o botão */
+    background: #222;
     border-radius: 5px;
     max-width: 500px;
     width: 90%;
     text-align: center;
-    position: relative;
-}
-
-.modal-content p {
-    font-size: 16px;
-    line-height: 1.5;
+    overflow-y: auto;
 }
 
 .modal-close {
-    margin-top: 20px;
+    position: sticky;
+    bottom: 0;
+    left: 10px;
+    margin: 0;
     padding: 10px 20px;
     background: #4CAF50;
     color: white;
@@ -541,10 +545,16 @@ button:hover {
     border-radius: 5px;
     cursor: pointer;
     font-size: 16px;
+    width: auto;
 }
 
 .modal-close:hover {
     background: #45a049;
+}
+
+.modal-content p {
+    font-size: 16px;
+    line-height: 1.5;
 }
 
 .toggle-header {
