@@ -16,17 +16,20 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyCswS4sbDQC8BCg_9olRl5IgEuQr4ApV30",
-            authDomain: "agendac3-d442c.firebaseapp.com",
-            projectId: "agendac3-d442c",
-            storageBucket: "agendac3-d442c.firebasestorage.app",
-            messagingSenderId: "676214405206",
-            appId: "1:676214405206:web:f676e8e7b6e97decafbca5"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
+        fetch('broken-silence-aaa9.2gabrielekaline.workers.dev')
+          .then(response => response.json())
+          .then(firebaseConfig => {
+            // Inicializa o Firebase com a configuração recebida do Worker
+            firebase.initializeApp(firebaseConfig);
+
+            const auth = firebase.auth();
+            const db = firebase.firestore();
+
+            // Agora você pode usar 'auth' e 'db' normalmente
+            console.log('Firebase inicializado com configuração segura!');
+          })
+          .catch(error => console.error('Erro ao carregar configuração do Firebase:', error));
+
 
         auth.onAuthStateChanged((user) => {
             if (user) {
