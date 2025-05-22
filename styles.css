@@ -315,6 +315,8 @@ button:hover {
 }
 
 .back-to-top {
+    
+    
     position: fixed;
     bottom: 20px;
     right: 20px;
@@ -521,6 +523,9 @@ button:hover {
 }
 
 .modal-content {
+    width: calc(100% - 40px);  /* para garantir margem lateral de 20px em cada lado */
+    margin: 20px auto;  /* margem automática horizontal e 20px vertical */
+    box-sizing: border-box; /* garante que padding e bordas sejam incluídos na largura */
     position: relative;
     max-height: 90vh;
     padding: 20px;
@@ -558,6 +563,8 @@ button:hover {
 }
 
 .toggle-header {
+    
+    box-sizing: border-box;
     padding: 15px;
     text-align: center;
     font-size: 18px;
