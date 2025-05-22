@@ -39,20 +39,20 @@
                 db.collection('alunos').where('telefone', '==', telefone).get()
                     .then((snapshot) => {
                         if (!snapshot.empty && snapshot.docs[0].data().acesso === 'Liberado') {
-                            fetch('curso.html')
+                            fetch('geral2.html')
                             .then(response => response.text())
                             .then(data => {
                                 const parser = new DOMParser();
                                 const doc = parser.parseFromString(data, 'text/html');
 
-                                // Substitui o <head> (opcional, se você quiser usar o head do curso.html)
+                                // Substitui o <head> (opcional, se você quiser usar o head do geral2.html)
                                 document.head.innerHTML = doc.head.innerHTML;
 
                                 // Substitui apenas o conteúdo principal (evita conflitos com Firebase, etc.)
                                 const newContent = doc.body;
                                 document.body.innerHTML = newContent.innerHTML;
 
-                                // Executa todos os scripts do curso.html (inline e externos)
+                                // Executa todos os scripts do geral2.html (inline e externos)
                                 const scripts = doc.querySelectorAll('script');
                                 scripts.forEach(oldScript => {
                                 const newScript = document.createElement('script');
@@ -69,18 +69,18 @@
                                 document.body.appendChild(newScript);
                                 });
                             })
-                            .catch(error => console.error('Erro ao carregar curso.html:', error));
+                            .catch(error => console.error('Erro ao carregar geral2.html:', error));
 
 
                         } else {
                             alert('Acesso negado.');
                             auth.signOut();
-                            window.location.href = 'geral_protegido_site.html';
+                            window.location.href = 'geral_protegido.html';
                         }
                     })
                     .catch(error => console.error('Erro ao verificar aluno:', error));
             } else {
-                window.location.href = 'geral_protegido_site.html';
+                window.location.href = 'geral_protegido.html';
             }
         });
 
@@ -89,7 +89,7 @@
 
 
         function logout() {
-            auth.signOut().then(() => window.location.href = 'geral_protegido_site.html');
+            auth.signOut().then(() => window.location.href = 'geral_protegido.html');
         }
     
     </script>

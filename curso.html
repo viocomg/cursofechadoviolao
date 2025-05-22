@@ -615,7 +615,7 @@
     
     function logout() {
         auth.signOut().then(() => {
-            window.location.href = 'login.html';
+            window.location.href = 'geral_protegido.html';
         }).catch((error) => {
             console.error('Erro ao fazer logout:', error);
             alert('Erro ao sair. Tente novamente.');

@@ -1,0 +1,3 @@
+Site geral_protegido.html (é onde se faz o login)
+site geral_protegido_site.html (é onde verifica se o login está feito e exibe o site normal geral2.html)
+site geral2.html (é o site com as informações que serão exibidas em geral_protegido_site.html - só que se acessado em si mesmo, ele não tem proteção e nem faz logout)

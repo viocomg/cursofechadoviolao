@@ -7,20 +7,7 @@
     <link rel="stylesheet" href="styles.css">
     
 </head>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
-<script>
-    let auth;
-    let db;
-    fetch('https://broken-silence-aaa9.2gabrielekaline.workers.dev')
-        .then(response => response.json())
-        .then(firebaseConfig => {
-            firebase.initializeApp(firebaseConfig);
-            auth = firebase.auth();
-            db = firebase.firestore();
-            console.log('Firebase inicializado com configuração segura!');
-        });
-</script>
+
 <style>
 
     img {
@@ -35,13 +22,23 @@
             <img src="img.webp" alt="Descrição da imagem" />
             <p>Página Geral</p>
         </div>
-        
+        <div class="logout-button" onclick="logout()">Sair</div>
+        <script>
+        function logout() {
+            auth.signOut().then(() => {
+                window.location.href = 'geral_protegido.html';
+            }).catch((error) => {
+                console.error('Erro ao fazer logout:', error);
+                alert('Erro ao sair. Tente novamente.');
+            });
+        }
+        </script>
         <div class="toggle-section">
             <button class="toggle-header" style="background-color: #319234;" onclick="openModal('modal1')">Como funcionam as videochamadas</button>
             <button class="toggle-header" style="background-color: #197de1;" onclick="openModal('modal2')">Como entrar na videochamada</button>
             <button class="toggle-header" style="background-color: #b52121;" onclick="openModal('modal3')">Como funciona nosso grupo do WhatsApp</button>
             <button class="toggle-header" style="background-color: #a8931d;" onclick="window.location.href='https://gabrielalmeidac3.github.io/musicas_violao/'">Site Aulas Músicas</button>
-            <button class="toggle-header" style="background-color: #b42a6f;" onclick="window.location.href='https://viocomg.github.io/cursofechadoviolao/curso'">Curso Completo do Zero ao Repertório</button>
+            <button class="toggle-header" style="background-color: #b42a6f;" onclick="window.location.href='index.html'">Curso Completo do Zero ao Repertório</button>
             <button class="toggle-header" style="background-color: #46306d;" onclick="window.location.href='https://youtube.com/playlist?list=PLQFrIFIh3VvJlQEkcsDMzPn50rOdQYh89&si=gnL5iG7nADlvIUX9'">Gravações das videochamadas</button>
         </div>
     </div>
