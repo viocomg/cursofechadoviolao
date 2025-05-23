@@ -14,29 +14,17 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
-    <div id="content"></div>
-   
+    <div id="content"></div> 
     <script>
-
-        
-
     let auth;
     let db;
-
-    
-        
-        
         fetch('https://broken-silence-aaa9.2gabrielekaline.workers.dev')
           .then(response => response.json())
           .then(firebaseConfig => {
             // Inicializa o Firebase com a configuração recebida do Worker
-            
-
             firebase.initializeApp(firebaseConfig);
-
             auth = firebase.auth();
             db = firebase.firestore();
-            
             // Define persistência local para compartilhamento entre sites
             firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
                 .then(() => {
@@ -45,21 +33,7 @@
                 .catch((error) => {
                     console.error("Erro ao definir persistência:", error);
                 });
-
-                window.addEventListener('message', (event) => {
-                if (event.origin !== 'https://gabrielalmeidac3.github.io') return;
-                if (event.data.type === 'checkAuth') {
-                    firebase.auth().onAuthStateChanged(user => {
-                    event.source.postMessage({
-                        type: 'authStatus',
-                        isLoggedIn: !!user,
-                        user: user ? { email: user.email, uid: user.uid } : null
-                    }, event.origin);
-                    });
-                }
-                }, false);
-            
-
+                
             // Agora você pode usar 'auth' e 'db' normalmente
             console.log('Firebase inicializado com configuração segura!');
             // Envia siteAReady se estiver em iframe
@@ -90,18 +64,17 @@
 
                     // Adiciona listener para postMessage do Site B
                     window.addEventListener('message', (event) => {
-                        const targetOrigin = 'https://gabrielalmeidac3.github.io';
-                        if (event.origin !== targetOrigin) {
-                            return;
-                        }
+                        if (event.origin !== 'https://gabrielalmeidac3.github.io') return;
                         if (event.data.type === 'checkAuth') {
+                            firebase.auth().onAuthStateChanged(user => {
                             event.source.postMessage({
                                 type: 'authStatus',
-                                isLoggedIn: true,
-                                userId: user.uid
+                                isLoggedIn: !!user,
+                                user: user ? { email: user.email, uid: user.uid } : null
                             }, event.origin);
+                            });
                         }
-                    });
+                    }, false);
 
                     // Envia siteAReady se estiver em iframe
                     if (window !== window.parent) {
