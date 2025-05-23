@@ -8,105 +8,219 @@
 <body>
   <h1>🔐 Site A - Login</h1>
   <button id="loginButton">Entrar anonimamente</button>
+  <button id="logoutButton" style="display:none;">Sair</button>
   <p id="status">Status: Carregando...</p>
+  <div id="logs" style="margin-top: 20px; padding: 10px; background: #f0f0f0; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto;"></div>
 
   <script>
-    console.log("[Site A] Iniciando...");
+    const logDiv = document.getElementById('logs');
+    
+    function addLog(message) {
+      const timestamp = new Date().toLocaleTimeString();
+      const logMessage = `[${timestamp}] ${message}`;
+      console.log(logMessage);
+      logDiv.innerHTML += logMessage + '<br>';
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    addLog("[Site A] 🚀 Iniciando Site A...");
 
     let auth;
     let isReady = false;
+    let currentUser = null;
+
+    // Detecta se está em iframe
+    const isInIframe = window !== window.parent;
+    addLog(`[Site A] 📱 Está em iframe: ${isInIframe}`);
 
     fetch('https://broken-silence-aaa9.2gabrielekaline.workers.dev')
-      .then(response => response.json())
+      .then(response => {
+        addLog("[Site A] 📡 Resposta da API recebida");
+        return response.json();
+      })
       .then(firebaseConfig => {
-        console.log("[Site A] Firebase config recebida:", firebaseConfig);
+        addLog("[Site A] ⚙️ Configuração Firebase recebida");
+        addLog(`[Site A] 🔑 Project ID: ${firebaseConfig.projectId}`);
+        
         firebase.initializeApp(firebaseConfig);
         auth = firebase.auth();
+        addLog("[Site A] 🔥 Firebase inicializado");
 
-        firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-          .then(() => {
-            console.log("[Site A] 🔐 Persistência LOCAL definida");
-            
-            // Aguarda o Firebase inicializar completamente
-            auth.onAuthStateChanged((user) => {
-              if (!isReady) {
-                isReady = true;
-                console.log("[Site A] ✅ Firebase pronto para comunicação");
-                
-                // Notifica o Site B que está pronto (se estiver em iframe)
-                if (window !== window.parent) {
-                  setTimeout(() => {
-                    window.parent.postMessage({ type: 'siteAReady' }, '*');
-                    console.log("[Site A] 📤 Enviou siteAReady");
-                  }, 500);
-                }
-              }
-              
-              updateStatus(user);
-            });
-            
-            listenToMessages();
-          })
-          .catch(error => {
-            console.error("[Site A] Erro ao definir persistência:", error);
-          });
-
-        function listenToMessages() {
-          console.log("[Site A] 🔁 Registrando listener de mensagens...");
-          window.addEventListener("message", (event) => {
-            console.log("[Site A] 📩 Mensagem recebida de:", event.origin, event.data);
-
-            if (!auth || !isReady) {
-              console.warn("[Site A] ⚠️ Firebase ainda não está pronto, ignorando mensagem.");
-              return;
-            }
-
-            if (event.data.type === "checkLogin") {
-              console.log("[Site A] 👀 Verificando status de login para:", event.origin);
-              
-              // Verifica o usuário atual IMEDIATAMENTE
-              const user = auth.currentUser;
-              const response = {
-                type: "loginStatus",
-                loggedIn: !!user,
-                uid: user?.uid || null,
-                timestamp: new Date().toISOString()
-              };
-              console.log("[Site A] 📤 Enviando status de login:", response);
-              event.source.postMessage(response, event.origin);
-            }
-          });
-        }
+        return firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
       })
-      .catch(err => {
-        console.error("[Site A] Erro ao buscar config do Firebase:", err);
+      .then(() => {
+        addLog("[Site A] 💾 Persistência LOCAL configurada");
+        
+        // Configura listener de mudança de estado
+        auth.onAuthStateChanged((user) => {
+          addLog(`[Site A] 👤 Estado de auth mudou: ${user ? 'LOGADO' : 'DESLOGADO'}`);
+          
+          currentUser = user;
+          updateStatus(user);
+          
+          if (!isReady) {
+            isReady = true;
+            addLog("[Site A] ✅ Firebase está pronto para comunicação");
+            
+            // Notifica Site B se estiver em iframe
+            if (isInIframe) {
+              setTimeout(() => {
+                notifySiteB();
+              }, 100);
+            }
+          }
+        });
+        
+        // Registra listener de mensagens
+        setupMessageListener();
+      })
+      .catch(error => {
+        addLog(`[Site A] ❌ Erro na inicialização: ${error.message}`);
+        console.error("[Site A] Erro completo:", error);
       });
 
+    function notifySiteB() {
+      addLog("[Site A] 📤 Enviando siteAReady para Site B");
+      try {
+        window.parent.postMessage({ 
+          type: 'siteAReady',
+          timestamp: new Date().toISOString(),
+          currentUser: currentUser ? { uid: currentUser.uid, isAnonymous: currentUser.isAnonymous } : null
+        }, '*');
+        addLog("[Site A] ✅ Mensagem siteAReady enviada com sucesso");
+      } catch (error) {
+        addLog(`[Site A] ❌ Erro ao enviar siteAReady: ${error.message}`);
+      }
+    }
+
+    function setupMessageListener() {
+      addLog("[Site A] 🔗 Configurando listener de mensagens");
+      
+      window.addEventListener("message", (event) => {
+        addLog(`[Site A] 📨 Mensagem recebida de: ${event.origin}`);
+        addLog(`[Site A] 📄 Dados da mensagem: ${JSON.stringify(event.data)}`);
+
+        if (!auth) {
+          addLog("[Site A] ⚠️ Auth não disponível, ignorando mensagem");
+          return;
+        }
+
+        if (!isReady) {
+          addLog("[Site A] ⚠️ Firebase não está pronto, ignorando mensagem");
+          return;
+        }
+
+        if (event.data && event.data.type === "checkLogin") {
+          addLog("[Site A] 🔍 Solicitação de verificação de login recebida");
+          
+          // Força uma nova verificação do estado atual
+          const user = auth.currentUser;
+          addLog(`[Site A] 👤 Usuário atual: ${user ? user.uid : 'null'}`);
+          
+          const response = {
+            type: "loginStatus",
+            loggedIn: !!user,
+            uid: user?.uid || null,
+            isAnonymous: user?.isAnonymous || false,
+            timestamp: new Date().toISOString()
+          };
+          
+          addLog(`[Site A] 📤 Enviando resposta: ${JSON.stringify(response)}`);
+          
+          try {
+            event.source.postMessage(response, event.origin);
+            addLog("[Site A] ✅ Resposta enviada com sucesso");
+          } catch (error) {
+            addLog(`[Site A] ❌ Erro ao enviar resposta: ${error.message}`);
+          }
+        } else {
+          addLog(`[Site A] ❓ Tipo de mensagem desconhecido: ${event.data?.type}`);
+        }
+      });
+      
+      addLog("[Site A] ✅ Listener de mensagens configurado");
+    }
+
+    // Event listeners dos botões
     document.getElementById("loginButton").addEventListener("click", () => {
+      addLog("[Site A] 🔐 Tentando fazer login anônimo");
+      
       if (!auth) {
+        addLog("[Site A] ❌ Firebase ainda não carregou");
         alert("Firebase ainda não carregou!");
         return;
       }
       
       auth.signInAnonymously()
-        .then(() => {
-          console.log("[Site A] ✅ Login anônimo realizado");
-          document.getElementById("status").innerText = "Status: Logado!";
+        .then((userCredential) => {
+          const user = userCredential.user;
+          addLog(`[Site A] ✅ Login anônimo realizado com sucesso - UID: ${user.uid}`);
+          currentUser = user;
+          
+          // Notifica Site B imediatamente após login (se em iframe)
+          if (isInIframe) {
+            setTimeout(() => {
+              addLog("[Site A] 📢 Notificando Site B sobre novo login");
+              notifySiteB();
+            }, 100);
+          }
         })
         .catch(error => {
-          console.error("[Site A] ❌ Erro no login:", error);
+          addLog(`[Site A] ❌ Erro no login: ${error.message}`);
+          console.error("[Site A] Erro completo no login:", error);
+        });
+    });
+
+    document.getElementById("logoutButton").addEventListener("click", () => {
+      addLog("[Site A] 🚪 Fazendo logout");
+      
+      auth.signOut()
+        .then(() => {
+          addLog("[Site A] ✅ Logout realizado com sucesso");
+          currentUser = null;
+          
+          // Notifica Site B sobre logout (se em iframe)
+          if (isInIframe) {
+            setTimeout(() => {
+              addLog("[Site A] 📢 Notificando Site B sobre logout");
+              notifySiteB();
+            }, 100);
+          }
+        })
+        .catch(error => {
+          addLog(`[Site A] ❌ Erro no logout: ${error.message}`);
         });
     });
 
     function updateStatus(user) {
+      const statusEl = document.getElementById("status");
+      const loginBtn = document.getElementById("loginButton");
+      const logoutBtn = document.getElementById("logoutButton");
+      
       if (user) {
-        console.log("[Site A] 🔎 Usuário está logado:", user.uid);
-        document.getElementById("status").innerText = "Status: Logado!";
+        addLog(`[Site A] 👤 Usuário logado - UID: ${user.uid} | Anônimo: ${user.isAnonymous}`);
+        statusEl.innerText = `Status: Logado! (${user.uid.substring(0, 8)}...)`;
+        statusEl.style.color = "green";
+        loginBtn.style.display = "none";
+        logoutBtn.style.display = "inline-block";
       } else {
-        console.log("[Site A] 🚫 Nenhum usuário logado");
-        document.getElementById("status").innerText = "Status: Não logado";
+        addLog("[Site A] 🚫 Nenhum usuário logado");
+        statusEl.innerText = "Status: Não logado";
+        statusEl.style.color = "red";
+        loginBtn.style.display = "inline-block";
+        logoutBtn.style.display = "none";
       }
     }
+
+    // Log quando a página termina de carregar
+    window.addEventListener('load', () => {
+      addLog("[Site A] 📄 Página totalmente carregada");
+    });
+
+    // Log de erros gerais
+    window.addEventListener('error', (event) => {
+      addLog(`[Site A] 💥 Erro JavaScript: ${event.message} em ${event.filename}:${event.lineno}`);
+    });
   </script>
 </body>
 </html>
