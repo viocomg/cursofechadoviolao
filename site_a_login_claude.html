@@ -62,12 +62,18 @@
             isReady = true;
             addLog("[Site A] ✅ Firebase está pronto para comunicação");
             
-            // Notifica Site B se estiver em iframe
+            // Força sincronização do estado se estiver em iframe
             if (isInIframe) {
               setTimeout(() => {
+                forceSyncAuthState();
                 notifySiteB();
               }, 100);
             }
+          } else if (isInIframe) {
+            // Se já estava pronto, notifica mudanças de estado
+            setTimeout(() => {
+              notifySiteB();
+            }, 100);
           }
         });
         
@@ -78,6 +84,45 @@
         addLog(`[Site A] ❌ Erro na inicialização: ${error.message}`);
         console.error("[Site A] Erro completo:", error);
       });
+
+    function forceSyncAuthState() {
+      addLog("[Site A] 🔄 Forçando sincronização do estado de auth...");
+      
+      if (!auth) {
+        addLog("[Site A] ❌ Auth não disponível para sincronização");
+        return;
+      }
+      
+      // Força recarregamento do token atual se existir
+      const user = auth.currentUser;
+      if (user) {
+        addLog(`[Site A] 🔑 Forçando reload do token para usuário: ${user.uid}`);
+        
+        user.getIdToken(true)
+          .then((token) => {
+            addLog("[Site A] ✅ Token recarregado com sucesso");
+            addLog(`[Site A] 🎫 Token length: ${token.length} chars`);
+          })
+          .catch((error) => {
+            addLog(`[Site A] ❌ Erro ao recarregar token: ${error.message}`);
+          });
+      } else {
+        addLog("[Site A] 🔍 Tentando recuperar estado de auth persistido...");
+        
+        // Tenta detectar se há uma sessão ativa mas não carregada
+        auth.getRedirectResult()
+          .then((result) => {
+            if (result.user) {
+              addLog(`[Site A] 🎉 Usuário recuperado do redirect: ${result.user.uid}`);
+            } else {
+              addLog("[Site A] 📭 Nenhum usuário no redirect result");
+            }
+          })
+          .catch((error) => {
+            addLog(`[Site A] ⚠️ Erro no redirect result: ${error.message}`);
+          });
+      }
+    }
 
     function notifySiteB() {
       addLog("[Site A] 📤 Enviando siteAReady para Site B");
@@ -113,26 +158,32 @@
         if (event.data && event.data.type === "checkLogin") {
           addLog("[Site A] 🔍 Solicitação de verificação de login recebida");
           
-          // Força uma nova verificação do estado atual
-          const user = auth.currentUser;
-          addLog(`[Site A] 👤 Usuário atual: ${user ? user.uid : 'null'}`);
+          // Força sincronização antes de responder
+          forceSyncAuthState();
           
-          const response = {
-            type: "loginStatus",
-            loggedIn: !!user,
-            uid: user?.uid || null,
-            isAnonymous: user?.isAnonymous || false,
-            timestamp: new Date().toISOString()
-          };
-          
-          addLog(`[Site A] 📤 Enviando resposta: ${JSON.stringify(response)}`);
-          
-          try {
-            event.source.postMessage(response, event.origin);
-            addLog("[Site A] ✅ Resposta enviada com sucesso");
-          } catch (error) {
-            addLog(`[Site A] ❌ Erro ao enviar resposta: ${error.message}`);
-          }
+          // Aguarda um momento para sincronização e então responde
+          setTimeout(() => {
+            const user = auth.currentUser;
+            addLog(`[Site A] 👤 Usuário atual após sync: ${user ? user.uid : 'null'}`);
+            
+            const response = {
+              type: "loginStatus",
+              loggedIn: !!user,
+              uid: user?.uid || null,
+              isAnonymous: user?.isAnonymous || false,
+              timestamp: new Date().toISOString(),
+              context: isInIframe ? 'iframe' : 'standalone'
+            };
+            
+            addLog(`[Site A] 📤 Enviando resposta: ${JSON.stringify(response)}`);
+            
+            try {
+              event.source.postMessage(response, event.origin);
+              addLog("[Site A] ✅ Resposta enviada com sucesso");
+            } catch (error) {
+              addLog(`[Site A] ❌ Erro ao enviar resposta: ${error.message}`);
+            }
+          }, 500); // Aguarda 500ms para sincronização
         } else {
           addLog(`[Site A] ❓ Tipo de mensagem desconhecido: ${event.data?.type}`);
         }
@@ -140,6 +191,28 @@
       
       addLog("[Site A] ✅ Listener de mensagens configurado");
     }
+
+    // Adiciona botão para forçar sincronização manual
+    const syncButton = document.createElement('button');
+    syncButton.id = 'syncButton';
+    syncButton.textContent = '🔄 Sincronizar Estado';
+    syncButton.style.marginLeft = '10px';
+    document.querySelector('h1').after(syncButton);
+
+    syncButton.addEventListener('click', () => {
+      addLog("[Site A] 🔄 Sincronização manual solicitada");
+      forceSyncAuthState();
+      
+      setTimeout(() => {
+        const user = auth.currentUser;
+        if (user) {
+          addLog(`[Site A] ✅ Após sincronização - Usuário: ${user.uid}`);
+        } else {
+          addLog("[Site A] ❌ Após sincronização - Nenhum usuário");
+        }
+        updateStatus(user);
+      }, 1000);
+    });
 
     // Event listeners dos botões
     document.getElementById("loginButton").addEventListener("click", () => {
