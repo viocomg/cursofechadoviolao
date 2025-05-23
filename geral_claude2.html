@@ -36,14 +36,7 @@
                 
             // Agora você pode usar 'auth' e 'db' normalmente
             console.log('Firebase inicializado com configuração segura!');
-            // Envia siteAReady se estiver em iframe
-            if (window !== window.parent) {
-                try {
-                    window.parent.postMessage({ type: 'siteAReady' }, 'https://gabrielalmeidac3.github.io');
-                } catch (error) {
-                    console.error("Erro ao enviar siteAReady:", error);
-                }
-            }
+            
             
             
   
@@ -63,7 +56,17 @@
                     console.log(`Usuário logado: ${user.email}, UID: ${user.uid}`);
 
                     // Adiciona listener para postMessage do Site B
-                    
+                    window.addEventListener('message', (event) => {
+                        if (event.origin !== 'https://gabrielalmeidac3.github.io') return;
+                        if (event.data.type === 'checkAuth') {
+                            // Resposta direta já que estamos dentro do onAuthStateChanged(user)
+                            event.source.postMessage({
+                                type: 'authStatus',
+                                isLoggedIn: true,
+                                user: { email: user.email, uid: user.uid }
+                            }, event.origin);
+                        }
+                    }, false);
 
                     // Envia siteAReady se estiver em iframe
                     if (window !== window.parent) {
@@ -118,36 +121,7 @@
                             }
                         })
                         .catch(error => console.error('Erro ao verificar aluno:', error));
-                    } else {
-                        console.log('Nenhum usuário logado');
-                        
-                        // Listener para postMessage quando não logado
-                        window.addEventListener('message', (event) => {
-                            const targetOrigin = 'https://gabrielalmeidac3.github.io';
-                            if (event.origin !== targetOrigin) {
-                                return;
-                            }
-                            if (event.data.type === 'checkAuth') {
-                                event.source.postMessage({
-                                    type: 'authStatus',
-                                    isLoggedIn: false,
-                                    userId: null
-                                }, event.origin);
-                            }
-                        });
-                        
-                        // Envia siteAReady se estiver em iframe
-                        if (window !== window.parent) {
-                            try {
-                                window.parent.postMessage({ type: 'siteAReady' }, 'https://gabrielalmeidac3.github.io');
-                            } catch (error) {
-                                console.error("Erro ao enviar siteAReady:", error);
-                            }
-                        } else {
-                            // Se não estiver em iframe, redireciona normalmente
-                            window.location.href = 'geral_protegido.html';
-                        }
-                    }
+                    } 
         });
 
           })
