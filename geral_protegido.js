@@ -48,7 +48,7 @@ initFirebase().then(() => {
                 if (aluno.acesso === "Liberado") {
                     const senhaFirebase = aluno.senha + "00";
                     await auth.signInWithEmailAndPassword(email, senhaFirebase);
-                    window.location.href = "geral_protegido_site.html";
+                    window.location.href = "geral_novo.html";
                 } else {
                     erroMsg.textContent = "Acesso bloqueado para este aluno.";
                     erroMsg.style.display = "block";
