@@ -28,15 +28,13 @@
     let auth;
     let isReady = false;
     let currentUser = null;
-    
-    // Chave para sincronização manual via localStorage
-    const AUTH_SYNC_KEY = 'firebase_auth_sync_state';
+    let authInitialized = false;
 
     // Detecta se está em iframe
     const isInIframe = window !== window.parent;
     addLog(`[Site A] 📱 Está em iframe: ${isInIframe}`);
 
-    fetch('https://broken-silence-aaa9.2gabrielekaline.workers.dev')
+    fetch('https://broken-silence-aaa9.workers.dev')
       .then(response => {
         addLog("[Site A] 📡 Resposta da API recebida");
         return response.json();
@@ -49,70 +47,18 @@
         auth = firebase.auth();
         addLog("[Site A] 🔥 Firebase inicializado");
 
+        // MUDANÇA CRÍTICA: Usar persistência LOCAL sempre, mas forçar sincronização
         return firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
       })
       .then(() => {
         addLog("[Site A] 💾 Persistência LOCAL configurada");
         
-        // Se estiver em iframe, tenta primeiro sincronizar com sessão existente
-        if (isInIframe) {
-          addLog("[Site A] 🔄 Em iframe - tentando sincronizar com sessão existente...");
-          
-          // Força check do estado persistido ANTES de configurar listeners
-          return new Promise((resolve) => {
-            // Aguarda um momento para Firebase processar estado persistido
-            setTimeout(() => {
-              const existingUser = auth.currentUser;
-              addLog(`[Site A] 🔍 Usuário existente encontrado: ${existingUser ? existingUser.uid : 'nenhum'}`);
-              resolve();
-            }, 1000);
-          });
-        }
-        
-        return Promise.resolve();
-      })
-      .then(() => {
-        // Configura listener de mudança de estado
-        auth.onAuthStateChanged((user) => {
-          addLog(`[Site A] 👤 Estado de auth mudou: ${user ? 'LOGADO' : 'DESLOGADO'}`);
-          
-          currentUser = user;
-          
-          // Se não estiver em iframe, salva estado no localStorage para sync
-          if (!isInIframe && user) {
-            const syncData = {
-              uid: user.uid,
-              isAnonymous: user.isAnonymous,
-              timestamp: Date.now()
-            };
-            try {
-              localStorage.setItem(AUTH_SYNC_KEY, JSON.stringify(syncData));
-              addLog(`[Site A] 💾 Estado salvo para sync: ${user.uid}`);
-            } catch (e) {
-              addLog(`[Site A] ❌ Erro ao salvar sync: ${e.message}`);
-            }
-          }
-          
-          updateStatus(user);
-          
-          if (!isReady) {
-            isReady = true;
-            addLog("[Site A] ✅ Firebase está pronto para comunicação");
-            
-            // Se estiver em iframe, tenta sincronizar APÓS estar pronto
-            if (isInIframe) {
-              setTimeout(() => {
-                tryLoadExistingSession();
-                notifySiteB();
-              }, 100);
-            }
-          } else if (isInIframe) {
-            // Se já estava pronto, notifica mudanças de estado
-            setTimeout(() => {
-              notifySiteB();
-            }, 100);
-          }
-        });
+        // NOVA ESTRATÉGIA: Aguardar um pouco antes de configurar o listener
+        // para dar tempo ao Firebase sincronizar o estado existente
+        setTimeout(() => {
+          setupAuthListener();
+          forceAuthStateSync();
+        }, 500);
         
         // Registra listener de mensagens
         setupMessageListener();
@@ -122,71 +68,46 @@
         console.error("[Site A] Erro completo:", error);
       });
 
-    function tryLoadExistingSession() {
-      if (!isInIframe) {
-        addLog("[Site A] ⚠️ tryLoadExistingSession chamado fora de iframe");
-        return;
-      }
+    function setupAuthListener() {
+      addLog("[Site A] 🔧 Configurando listener de auth...");
       
-      addLog("[Site A] 🔍 Tentando carregar sessão existente...");
-      
-      try {
-        const syncDataStr = localStorage.getItem(AUTH_SYNC_KEY);
-        if (!syncDataStr) {
-          addLog("[Site A] 📭 Nenhum dado de sync encontrado no localStorage");
-          return;
+      // Configura listener de mudança de estado
+      auth.onAuthStateChanged((user) => {
+        addLog(`[Site A] 👤 Estado de auth mudou: ${user ? 'LOGADO' : 'DESLOGADO'}`);
+        
+        if (user) {
+          addLog(`[Site A] 🆔 UID: ${user.uid}`);
+          addLog(`[Site A] 🔍 É anônimo: ${user.isAnonymous}`);
         }
         
-        const syncData = JSON.parse(syncDataStr);
-        const ageMinutes = (Date.now() - syncData.timestamp) / (1000 * 60);
+        currentUser = user;
+        updateStatus(user);
         
-        addLog(`[Site A] 📊 Dados de sync encontrados - UID: ${syncData.uid}, Idade: ${ageMinutes.toFixed(1)}min`);
-        
-        // Se os dados são muito antigos (>30 min), ignora
-        if (ageMinutes > 30) {
-          addLog("[Site A] ⏰ Dados de sync muito antigos, ignorando");
-          localStorage.removeItem(AUTH_SYNC_KEY);
-          return;
+        if (!authInitialized) {
+          authInitialized = true;
+          addLog("[Site A] ✅ Auth inicializado pela primeira vez");
         }
         
-        // Se já temos um usuário com o mesmo UID, não faz nada
-        if (currentUser && currentUser.uid === syncData.uid) {
-          addLog("[Site A] ✅ Usuário já sincronizado corretamente");
-          return;
+        if (!isReady) {
+          isReady = true;
+          addLog("[Site A] ✅ Firebase está pronto para comunicação");
+          
+          // Notifica Site B se estiver em iframe
+          if (isInIframe) {
+            setTimeout(() => {
+              notifySiteB();
+            }, 100);
+          }
+        } else if (isInIframe) {
+          // Se já estava pronto, notifica mudanças de estado
+          setTimeout(() => {
+            notifySiteB();
+          }, 100);
         }
-        
-        // Se não temos usuário ou é diferente, tenta fazer login anônimo
-        if (!currentUser || currentUser.uid !== syncData.uid) {
-          addLog("[Site A] 🔄 Tentando recriar sessão anônima...");
-          
-          // Como não podemos "copiar" uma sessão anônima existente,
-          // vamos simular o estado logado para o Site B
-          addLog("[Site A] 💡 Simulando estado sincronizado para Site B");
-          
-          // Simula um usuário com os dados do sync
-          const simulatedUser = {
-            uid: syncData.uid,
-            isAnonymous: syncData.isAnonymous
-          };
-          
-          // Atualiza display para mostrar estado "sincronizado"
-          document.getElementById("status").innerHTML = `
-            Status: Sincronizado com aba principal!<br>
-            <small>UID: ${syncData.uid.substring(0, 8)}... (da aba principal)</small>
-          `;
-          document.getElementById("status").style.color = "blue";
-          
-          // Salva referência para usar nas respostas
-          window.syncedUserData = simulatedUser;
-          addLog(`[Site A] ✅ Estado simulado criado para UID: ${syncData.uid}`);
-        }
-        
-      } catch (error) {
-        addLog(`[Site A] ❌ Erro ao processar sync: ${error.message}`);
-      }
+      });
     }
 
-    function forceSyncAuthState() {
+    function forceAuthStateSync() {
       addLog("[Site A] 🔄 Forçando sincronização do estado de auth...");
       
       if (!auth) {
@@ -194,11 +115,12 @@
         return;
       }
       
-      // Força recarregamento do token atual se existir
+      // ESTRATÉGIA 1: Verificar se há token persistido
       const user = auth.currentUser;
       if (user) {
-        addLog(`[Site A] 🔑 Forçando reload do token para usuário: ${user.uid}`);
+        addLog(`[Site A] 🔑 Usuário já detectado: ${user.uid}`);
         
+        // Força refresh do token para garantir validade
         user.getIdToken(true)
           .then((token) => {
             addLog("[Site A] ✅ Token recarregado com sucesso");
@@ -208,9 +130,17 @@
             addLog(`[Site A] ❌ Erro ao recarregar token: ${error.message}`);
           });
       } else {
-        addLog("[Site A] 🔍 Tentando recuperar estado de auth persistido...");
+        addLog("[Site A] 🔍 Nenhum usuário detectado inicialmente");
         
-        // Tenta detectar se há uma sessão ativa mas não carregada
+        // ESTRATÉGIA 2: Tentar detectar sessão persistida manualmente
+        // Isso força o Firebase a verificar se há uma sessão ativa
+        auth.onIdTokenChanged((user) => {
+          if (user && !currentUser) {
+            addLog(`[Site A] 🎉 Usuário detectado via token change: ${user.uid}`);
+          }
+        });
+        
+        // ESTRATÉGIA 3: Verificar redirect result
         auth.getRedirectResult()
           .then((result) => {
             if (result.user) {
@@ -223,16 +153,40 @@
             addLog(`[Site A] ⚠️ Erro no redirect result: ${error.message}`);
           });
       }
+      
+      // ESTRATÉGIA 4: Se estiver em iframe, tentar sincronizar com contexto pai
+      if (isInIframe) {
+        addLog("[Site A] 🔗 Tentando sincronizar com contexto pai...");
+        
+        // Força uma nova verificação de auth após um delay
+        setTimeout(() => {
+          const currentUserAfterDelay = auth.currentUser;
+          if (currentUserAfterDelay && !currentUser) {
+            addLog(`[Site A] 🔄 Usuário detectado após delay: ${currentUserAfterDelay.uid}`);
+            currentUser = currentUserAfterDelay;
+            updateStatus(currentUserAfterDelay);
+          }
+        }, 2000);
+      }
     }
 
     function notifySiteB() {
       addLog("[Site A] 📤 Enviando siteAReady para Site B");
       try {
-        window.parent.postMessage({ 
+        const message = { 
           type: 'siteAReady',
           timestamp: new Date().toISOString(),
-          currentUser: currentUser ? { uid: currentUser.uid, isAnonymous: currentUser.isAnonymous } : null
-        }, '*');
+          currentUser: currentUser ? { 
+            uid: currentUser.uid, 
+            isAnonymous: currentUser.isAnonymous,
+            authTime: currentUser.metadata?.lastSignInTime || null
+          } : null,
+          context: isInIframe ? 'iframe' : 'standalone'
+        };
+        
+        addLog(`[Site A] 📋 Dados enviados: ${JSON.stringify(message)}`);
+        
+        window.parent.postMessage(message, '*');
         addLog("[Site A] ✅ Mensagem siteAReady enviada com sucesso");
       } catch (error) {
         addLog(`[Site A] ❌ Erro ao enviar siteAReady: ${error.message}`);
@@ -251,51 +205,125 @@
           return;
         }
 
-        if (!isReady) {
-          addLog("[Site A] ⚠️ Firebase não está pronto, ignorando mensagem");
-          return;
-        }
-
         if (event.data && event.data.type === "checkLogin") {
           addLog("[Site A] 🔍 Solicitação de verificação de login recebida");
           
-          // Se estiver em iframe, verifica se temos dados sincronizados
-          let userToReport = currentUser;
-          let context = isInIframe ? 'iframe' : 'standalone';
-          
-          if (isInIframe && window.syncedUserData && !currentUser) {
-            addLog("[Site A] 🔄 Usando dados sincronizados da aba principal");
-            userToReport = window.syncedUserData;
-            context = 'iframe-synced';
-          }
-          
-          setTimeout(() => {
-            addLog(`[Site A] 👤 Usuário para reportar: ${userToReport ? userToReport.uid : 'null'}`);
-            
-            const response = {
-              type: "loginStatus",
-              loggedIn: !!userToReport,
-              uid: userToReport?.uid || null,
-              isAnonymous: userToReport?.isAnonymous || false,
-              timestamp: new Date().toISOString(),
-              context: context
-            };
-            
-            addLog(`[Site A] 📤 Enviando resposta: ${JSON.stringify(response)}`);
-            
-            try {
-              event.source.postMessage(response, event.origin);
-              addLog("[Site A] ✅ Resposta enviada com sucesso");
-            } catch (error) {
-              addLog(`[Site A] ❌ Erro ao enviar resposta: ${error.message}`);
-            }
-          }, 200); // Reduzido para 200ms
+          // MUDANÇA CRÍTICA: Fazer uma sincronização mais agressiva
+          performDeepAuthSync()
+            .then(() => {
+              const user = auth.currentUser;
+              addLog(`[Site A] 👤 Usuário atual após deep sync: ${user ? user.uid : 'null'}`);
+              
+              const response = {
+                type: "loginStatus",
+                loggedIn: !!user,
+                uid: user?.uid || null,
+                isAnonymous: user?.isAnonymous || false,
+                timestamp: new Date().toISOString(),
+                context: isInIframe ? 'iframe' : 'standalone',
+                syncMethod: 'deep'
+              };
+              
+              addLog(`[Site A] 📤 Enviando resposta: ${JSON.stringify(response)}`);
+              
+              try {
+                event.source.postMessage(response, event.origin);
+                addLog("[Site A] ✅ Resposta enviada com sucesso");
+              } catch (error) {
+                addLog(`[Site A] ❌ Erro ao enviar resposta: ${error.message}`);
+              }
+            })
+            .catch((error) => {
+              addLog(`[Site A] ❌ Erro na sincronização profunda: ${error.message}`);
+            });
         } else {
           addLog(`[Site A] ❓ Tipo de mensagem desconhecido: ${event.data?.type}`);
         }
       });
       
       addLog("[Site A] ✅ Listener de mensagens configurado");
+    }
+
+    // NOVA FUNÇÃO: Sincronização profunda e agressiva
+    async function performDeepAuthSync() {
+      addLog("[Site A] 🔬 Iniciando sincronização profunda...");
+      
+      try {
+        // Passo 1: Verificar usuário atual
+        let user = auth.currentUser;
+        addLog(`[Site A] 👤 Usuário atual: ${user ? user.uid : 'null'}`);
+        
+        // Passo 2: Se não há usuário, forçar reload do estado
+        if (!user) {
+          addLog("[Site A] 🔄 Forçando reload do estado de auth...");
+          
+          // Tenta diferentes estratégias de sincronização
+          await Promise.race([
+            // Estratégia 1: Aguardar mudança de estado
+            new Promise((resolve) => {
+              const unsubscribe = auth.onAuthStateChanged((newUser) => {
+                if (newUser) {
+                  addLog(`[Site A] ✅ Usuário detectado via state change: ${newUser.uid}`);
+                  unsubscribe();
+                  resolve(newUser);
+                } else {
+                  setTimeout(() => {
+                    unsubscribe();
+                    resolve(null);
+                  }, 1000);
+                }
+              });
+            }),
+            
+            // Estratégia 2: Aguardar mudança de token
+            new Promise((resolve) => {
+              const unsubscribe = auth.onIdTokenChanged((newUser) => {
+                if (newUser) {
+                  addLog(`[Site A] ✅ Usuário detectado via token change: ${newUser.uid}`);
+                  unsubscribe();
+                  resolve(newUser);
+                } else {
+                  setTimeout(() => {
+                    unsubscribe();
+                    resolve(null);
+                  }, 1000);
+                }
+              });
+            }),
+            
+            // Timeout de segurança
+            new Promise((resolve) => {
+              setTimeout(() => {
+                addLog("[Site A] ⏰ Timeout na sincronização profunda");
+                resolve(null);
+              }, 3000);
+            })
+          ]);
+          
+          // Atualizar referência do usuário
+          user = auth.currentUser;
+        }
+        
+        // Passo 3: Se há usuário, verificar se o token é válido
+        if (user) {
+          addLog(`[Site A] 🔑 Verificando validade do token para ${user.uid}...`);
+          try {
+            const token = await user.getIdToken(true);
+            addLog(`[Site A] ✅ Token válido obtido (${token.length} chars)`);
+            currentUser = user;
+            updateStatus(user);
+          } catch (tokenError) {
+            addLog(`[Site A] ❌ Erro ao obter token: ${tokenError.message}`);
+          }
+        }
+        
+        addLog("[Site A] 🏁 Sincronização profunda concluída");
+        return user;
+        
+      } catch (error) {
+        addLog(`[Site A] 💥 Erro na sincronização profunda: ${error.message}`);
+        throw error;
+      }
     }
 
     // Adiciona botão para forçar sincronização manual
@@ -307,21 +335,17 @@
 
     syncButton.addEventListener('click', () => {
       addLog("[Site A] 🔄 Sincronização manual solicitada");
-      
-      if (isInIframe) {
-        tryLoadExistingSession();
-      } else {
-        forceSyncAuthState();
-      }
-      
-      setTimeout(() => {
-        const user = currentUser || window.syncedUserData;
-        if (user) {
-          addLog(`[Site A] ✅ Após sincronização - Usuário: ${user.uid}`);
-        } else {
-          addLog("[Site A] ❌ Após sincronização - Nenhum usuário");
-        }
-      }, 1000);
+      performDeepAuthSync()
+        .then((user) => {
+          if (user) {
+            addLog(`[Site A] ✅ Após sincronização manual - Usuário: ${user.uid}`);
+          } else {
+            addLog("[Site A] ❌ Após sincronização manual - Nenhum usuário");
+          }
+        })
+        .catch((error) => {
+          addLog(`[Site A] ❌ Erro na sincronização manual: ${error.message}`);
+        });
     });
 
     // Event listeners dos botões
@@ -404,6 +428,21 @@
     window.addEventListener('error', (event) => {
       addLog(`[Site A] 💥 Erro JavaScript: ${event.message} em ${event.filename}:${event.lineno}`);
     });
+
+    // NOVO: Verificação periódica se estiver em iframe
+    if (isInIframe) {
+      addLog("[Site A] ⏰ Configurando verificação periódica (iframe mode)");
+      
+      setInterval(() => {
+        const user = auth && auth.currentUser;
+        if (user && (!currentUser || currentUser.uid !== user.uid)) {
+          addLog(`[Site A] 🔄 Sincronização periódica detectou mudança: ${user.uid}`);
+          currentUser = user;
+          updateStatus(user);
+          notifySiteB();
+        }
+      }, 2000); // Verifica a cada 2 segundos
+    }
   </script>
 </body>
 </html>
