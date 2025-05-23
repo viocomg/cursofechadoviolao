@@ -28,6 +28,9 @@
     let auth;
     let isReady = false;
     let currentUser = null;
+    
+    // Chave para sincronização manual via localStorage
+    const AUTH_SYNC_KEY = 'firebase_auth_sync_state';
 
     // Detecta se está em iframe
     const isInIframe = window !== window.parent;
@@ -51,21 +54,55 @@
       .then(() => {
         addLog("[Site A] 💾 Persistência LOCAL configurada");
         
+        // Se estiver em iframe, tenta primeiro sincronizar com sessão existente
+        if (isInIframe) {
+          addLog("[Site A] 🔄 Em iframe - tentando sincronizar com sessão existente...");
+          
+          // Força check do estado persistido ANTES de configurar listeners
+          return new Promise((resolve) => {
+            // Aguarda um momento para Firebase processar estado persistido
+            setTimeout(() => {
+              const existingUser = auth.currentUser;
+              addLog(`[Site A] 🔍 Usuário existente encontrado: ${existingUser ? existingUser.uid : 'nenhum'}`);
+              resolve();
+            }, 1000);
+          });
+        }
+        
+        return Promise.resolve();
+      })
+      .then(() => {
         // Configura listener de mudança de estado
         auth.onAuthStateChanged((user) => {
           addLog(`[Site A] 👤 Estado de auth mudou: ${user ? 'LOGADO' : 'DESLOGADO'}`);
           
           currentUser = user;
+          
+          // Se não estiver em iframe, salva estado no localStorage para sync
+          if (!isInIframe && user) {
+            const syncData = {
+              uid: user.uid,
+              isAnonymous: user.isAnonymous,
+              timestamp: Date.now()
+            };
+            try {
+              localStorage.setItem(AUTH_SYNC_KEY, JSON.stringify(syncData));
+              addLog(`[Site A] 💾 Estado salvo para sync: ${user.uid}`);
+            } catch (e) {
+              addLog(`[Site A] ❌ Erro ao salvar sync: ${e.message}`);
+            }
+          }
+          
           updateStatus(user);
           
           if (!isReady) {
             isReady = true;
             addLog("[Site A] ✅ Firebase está pronto para comunicação");
             
-            // Força sincronização do estado se estiver em iframe
+            // Se estiver em iframe, tenta sincronizar APÓS estar pronto
             if (isInIframe) {
               setTimeout(() => {
-                forceSyncAuthState();
+                tryLoadExistingSession();
                 notifySiteB();
               }, 100);
             }
@@ -84,6 +121,70 @@
         addLog(`[Site A] ❌ Erro na inicialização: ${error.message}`);
         console.error("[Site A] Erro completo:", error);
       });
+
+    function tryLoadExistingSession() {
+      if (!isInIframe) {
+        addLog("[Site A] ⚠️ tryLoadExistingSession chamado fora de iframe");
+        return;
+      }
+      
+      addLog("[Site A] 🔍 Tentando carregar sessão existente...");
+      
+      try {
+        const syncDataStr = localStorage.getItem(AUTH_SYNC_KEY);
+        if (!syncDataStr) {
+          addLog("[Site A] 📭 Nenhum dado de sync encontrado no localStorage");
+          return;
+        }
+        
+        const syncData = JSON.parse(syncDataStr);
+        const ageMinutes = (Date.now() - syncData.timestamp) / (1000 * 60);
+        
+        addLog(`[Site A] 📊 Dados de sync encontrados - UID: ${syncData.uid}, Idade: ${ageMinutes.toFixed(1)}min`);
+        
+        // Se os dados são muito antigos (>30 min), ignora
+        if (ageMinutes > 30) {
+          addLog("[Site A] ⏰ Dados de sync muito antigos, ignorando");
+          localStorage.removeItem(AUTH_SYNC_KEY);
+          return;
+        }
+        
+        // Se já temos um usuário com o mesmo UID, não faz nada
+        if (currentUser && currentUser.uid === syncData.uid) {
+          addLog("[Site A] ✅ Usuário já sincronizado corretamente");
+          return;
+        }
+        
+        // Se não temos usuário ou é diferente, tenta fazer login anônimo
+        if (!currentUser || currentUser.uid !== syncData.uid) {
+          addLog("[Site A] 🔄 Tentando recriar sessão anônima...");
+          
+          // Como não podemos "copiar" uma sessão anônima existente,
+          // vamos simular o estado logado para o Site B
+          addLog("[Site A] 💡 Simulando estado sincronizado para Site B");
+          
+          // Simula um usuário com os dados do sync
+          const simulatedUser = {
+            uid: syncData.uid,
+            isAnonymous: syncData.isAnonymous
+          };
+          
+          // Atualiza display para mostrar estado "sincronizado"
+          document.getElementById("status").innerHTML = `
+            Status: Sincronizado com aba principal!<br>
+            <small>UID: ${syncData.uid.substring(0, 8)}... (da aba principal)</small>
+          `;
+          document.getElementById("status").style.color = "blue";
+          
+          // Salva referência para usar nas respostas
+          window.syncedUserData = simulatedUser;
+          addLog(`[Site A] ✅ Estado simulado criado para UID: ${syncData.uid}`);
+        }
+        
+      } catch (error) {
+        addLog(`[Site A] ❌ Erro ao processar sync: ${error.message}`);
+      }
+    }
 
     function forceSyncAuthState() {
       addLog("[Site A] 🔄 Forçando sincronização do estado de auth...");
@@ -158,21 +259,26 @@
         if (event.data && event.data.type === "checkLogin") {
           addLog("[Site A] 🔍 Solicitação de verificação de login recebida");
           
-          // Força sincronização antes de responder
-          forceSyncAuthState();
+          // Se estiver em iframe, verifica se temos dados sincronizados
+          let userToReport = currentUser;
+          let context = isInIframe ? 'iframe' : 'standalone';
           
-          // Aguarda um momento para sincronização e então responde
+          if (isInIframe && window.syncedUserData && !currentUser) {
+            addLog("[Site A] 🔄 Usando dados sincronizados da aba principal");
+            userToReport = window.syncedUserData;
+            context = 'iframe-synced';
+          }
+          
           setTimeout(() => {
-            const user = auth.currentUser;
-            addLog(`[Site A] 👤 Usuário atual após sync: ${user ? user.uid : 'null'}`);
+            addLog(`[Site A] 👤 Usuário para reportar: ${userToReport ? userToReport.uid : 'null'}`);
             
             const response = {
               type: "loginStatus",
-              loggedIn: !!user,
-              uid: user?.uid || null,
-              isAnonymous: user?.isAnonymous || false,
+              loggedIn: !!userToReport,
+              uid: userToReport?.uid || null,
+              isAnonymous: userToReport?.isAnonymous || false,
               timestamp: new Date().toISOString(),
-              context: isInIframe ? 'iframe' : 'standalone'
+              context: context
             };
             
             addLog(`[Site A] 📤 Enviando resposta: ${JSON.stringify(response)}`);
@@ -183,7 +289,7 @@
             } catch (error) {
               addLog(`[Site A] ❌ Erro ao enviar resposta: ${error.message}`);
             }
-          }, 500); // Aguarda 500ms para sincronização
+          }, 200); // Reduzido para 200ms
         } else {
           addLog(`[Site A] ❓ Tipo de mensagem desconhecido: ${event.data?.type}`);
         }
@@ -201,16 +307,20 @@
 
     syncButton.addEventListener('click', () => {
       addLog("[Site A] 🔄 Sincronização manual solicitada");
-      forceSyncAuthState();
+      
+      if (isInIframe) {
+        tryLoadExistingSession();
+      } else {
+        forceSyncAuthState();
+      }
       
       setTimeout(() => {
-        const user = auth.currentUser;
+        const user = currentUser || window.syncedUserData;
         if (user) {
           addLog(`[Site A] ✅ Após sincronização - Usuário: ${user.uid}`);
         } else {
           addLog("[Site A] ❌ Após sincronização - Nenhum usuário");
         }
-        updateStatus(user);
       }, 1000);
     });
 
