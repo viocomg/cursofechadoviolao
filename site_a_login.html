@@ -25,8 +25,8 @@
         firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
           .then(() => {
             console.log("[Site A] 🔐 Persistência LOCAL definida");
-            checkLoginStatus(); // verifica se já tem alguém logado
-            listenToMessages(); // <- só agora escuta mensagens
+            checkLoginStatus(); // Verifica se já tem alguém logado
+            listenToMessages(); // Só agora escuta mensagens
           })
           .catch(error => {
             console.error("[Site A] Erro ao definir persistência:", error);
@@ -36,15 +36,15 @@
           console.log("[Site A] 🔁 Registrando listener de mensagens...");
           window.addEventListener("message", (event) => {
             console.log("[Site A] 📩 Mensagem recebida de:", event.origin, event.data);
-        
+
             if (!auth) {
               console.warn("[Site A] ⚠️ auth ainda não está definido, ignorando mensagem.");
               return;
             }
-        
+
             if (event.data.type === "checkLogin") {
               console.log("[Site A] 👀 Verificando status de login para:", event.origin);
-        
+
               auth.onAuthStateChanged((user) => {
                 const response = {
                   type: "loginStatus",
@@ -58,8 +58,6 @@
             }
           });
         }
-
-        
       })
       .catch(err => {
         console.error("[Site A] Erro ao buscar config do Firebase:", err);
@@ -87,8 +85,6 @@
         }
       });
     }
-
-    
   </script>
 </body>
 </html>
