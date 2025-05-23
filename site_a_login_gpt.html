@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Site A - Login Firebase</title>
+</head>
+<body>
+  <h1>🔐 Site A - Login Firebase</h1>
+  <div id="status">⏳ Verificando status...</div>
+  <button id="login">🔑 Fazer Login</button>
+  <button id="logout">🚪 Logout</button>
+
+  <pre id="log" style="background:#f4f4f4;padding:10px;margin-top:20px;font-size:12px;max-height:300px;overflow-y:auto;"></pre>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script>
+    const logEl = document.getElementById('log');
+    function log(msg) {
+      const time = new Date().toLocaleTimeString();
+      const fullMsg = `[${time}] ${msg}`;
+      console.log(fullMsg);
+      logEl.innerHTML += fullMsg + '\n';
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAoC0Z6GNP8GFJovN1nF4AUmvobY1MNvso",
+      authDomain: "broken-silence-aaa9.firebaseapp.com",
+      projectId: "broken-silence-aaa9",
+      storageBucket: "broken-silence-aaa9.appspot.com",
+      messagingSenderId: "321022649890",
+      appId: "1:321022649890:web:5249ebc1ed68062d48453e"
+    };
+
+    log("🔥 Inicializando Firebase...");
+    const app = firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    const statusEl = document.getElementById('status');
+    const AUTH_STORAGE_KEY = 'firebase_auth_cross_frame_sync';
+
+    function updateUI(user) {
+      if (user) {
+        statusEl.textContent = `✅ Status: Logado! (${user.uid})`;
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ uid: user.uid, email: user.email }));
+        if (window.parent !== window) {
+          log("📩 Enviando auth ao parent (iframe)");
+          window.parent.postMessage({ type: 'auth-update', uid: user.uid, email: user.email }, '*');
+        }
+      } else {
+        statusEl.textContent = "🚫 Status: Deslogado.";
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+        if (window.parent !== window) {
+          log("📩 Enviando logout ao parent (iframe)");
+          window.parent.postMessage({ type: 'auth-logout' }, '*');
+        }
+      }
+    }
+
+    auth.onAuthStateChanged(user => {
+      log(`👤 Estado de auth alterado: ${user ? user.uid : 'logout'}`);
+      updateUI(user);
+    });
+
+    document.getElementById('login').onclick = () => {
+      log("🔑 Iniciando login com popup...");
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider).then(result => {
+        log(`✅ Login realizado: ${result.user.uid}`);
+      }).catch(err => {
+        log(`❌ Erro no login: ${err.message}`);
+      });
+    };
+
+    document.getElementById('logout').onclick = () => {
+      log("🚪 Fazendo logout...");
+      auth.signOut().then(() => {
+        log("✅ Logout realizado");
+      });
+    };
+  </script>
+</body>
+</html>
