@@ -25,11 +25,41 @@
         firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
           .then(() => {
             console.log("[Site A] 🔐 Persistência LOCAL definida");
-            checkLoginStatus();
+            checkLoginStatus(); // verifica se já tem alguém logado
+            listenToMessages(); // <- só agora escuta mensagens
           })
           .catch(error => {
             console.error("[Site A] Erro ao definir persistência:", error);
           });
+
+        function listenToMessages() {
+          console.log("[Site A] 🔁 Registrando listener de mensagens...");
+          window.addEventListener("message", (event) => {
+            console.log("[Site A] 📩 Mensagem recebida de:", event.origin, event.data);
+        
+            if (!auth) {
+              console.warn("[Site A] ⚠️ auth ainda não está definido, ignorando mensagem.");
+              return;
+            }
+        
+            if (event.data.type === "checkLogin") {
+              console.log("[Site A] 👀 Verificando status de login para:", event.origin);
+        
+              auth.onAuthStateChanged((user) => {
+                const response = {
+                  type: "loginStatus",
+                  loggedIn: !!user,
+                  uid: user?.uid || null,
+                  timestamp: new Date().toISOString()
+                };
+                console.log("[Site A] 📤 Enviando status de login:", response);
+                event.source.postMessage(response, event.origin);
+              });
+            }
+          });
+        }
+
+        
       })
       .catch(err => {
         console.error("[Site A] Erro ao buscar config do Firebase:", err);
@@ -58,22 +88,7 @@
       });
     }
 
-    // Escuta mensagens do Site B
-    window.addEventListener("message", (event) => {
-      console.log("[Site A] 📩 Mensagem recebida de:", event.origin, event.data);
-      if (event.data.type === "checkLogin") {
-        auth.onAuthStateChanged((user) => {
-          const response = {
-            type: "loginStatus",
-            loggedIn: !!user,
-            uid: user?.uid || null,
-            timestamp: new Date().toISOString()
-          };
-          console.log("[Site A] 📤 Enviando status de login:", response);
-          event.source.postMessage(response, event.origin);
-        });
-      }
-    });
+    
   </script>
 </body>
 </html>
