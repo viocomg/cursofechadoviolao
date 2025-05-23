@@ -2,82 +2,107 @@
 <html>
 <head>
   <title>Site A - Login Firebase</title>
-</head>
-<body>
-  <h1>🔐 Site A - Login Firebase</h1>
-  <div id="status">⏳ Verificando status...</div>
-  <button id="login">🔑 Fazer Login</button>
-  <button id="logout">🚪 Logout</button>
-
-  <pre id="log" style="background:#f4f4f4;padding:10px;margin-top:20px;font-size:12px;max-height:300px;overflow-y:auto;"></pre>
-
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <h1>🔐 Site A - Firebase Login</h1>
+  <div id="status">⏳ Inicializando Firebase...</div>
+
+  <button onclick="fazerLogin()">🔓 Login Anônimo</button>
+  <button onclick="fazerLogout()">🔒 Logout</button>
+
+  <div id="logs" style="margin-top: 20px; padding: 10px; background: #eef; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto;"></div>
+
   <script>
-    const logEl = document.getElementById('log');
+    const AUTH_STORAGE_KEY = 'firebase_auth_cross_frame_sync';
+    let auth;
+
+    const statusDiv = document.getElementById('status');
+    const logs = document.getElementById('logs');
+
     function log(msg) {
       const time = new Date().toLocaleTimeString();
-      const fullMsg = `[${time}] ${msg}`;
-      console.log(fullMsg);
-      logEl.innerHTML += fullMsg + '\n';
-      logEl.scrollTop = logEl.scrollHeight;
+      const full = `[${time}] ${msg}`;
+      console.log(full);
+      logs.innerHTML += full + '<br>';
+      logs.scrollTop = logs.scrollHeight;
     }
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyAoC0Z6GNP8GFJovN1nF4AUmvobY1MNvso",
-      authDomain: "broken-silence-aaa9.firebaseapp.com",
-      projectId: "broken-silence-aaa9",
-      storageBucket: "broken-silence-aaa9.appspot.com",
-      messagingSenderId: "321022649890",
-      appId: "1:321022649890:web:5249ebc1ed68062d48453e"
-    };
-
-    log("🔥 Inicializando Firebase...");
-    const app = firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-
-    const statusEl = document.getElementById('status');
-    const AUTH_STORAGE_KEY = 'firebase_auth_cross_frame_sync';
-
-    function updateUI(user) {
-      if (user) {
-        statusEl.textContent = `✅ Status: Logado! (${user.uid})`;
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ uid: user.uid, email: user.email }));
-        if (window.parent !== window) {
-          log("📩 Enviando auth ao parent (iframe)");
-          window.parent.postMessage({ type: 'auth-update', uid: user.uid, email: user.email }, '*');
-        }
-      } else {
-        statusEl.textContent = "🚫 Status: Deslogado.";
-        localStorage.removeItem(AUTH_STORAGE_KEY);
-        if (window.parent !== window) {
-          log("📩 Enviando logout ao parent (iframe)");
-          window.parent.postMessage({ type: 'auth-logout' }, '*');
-        }
+    function enviarAuthParaPai(user) {
+      if (window.parent !== window) {
+        const msg = user
+          ? { type: 'auth-update', uid: user.uid }
+          : { type: 'auth-logout' };
+        log(`📤 Enviando auth para parent: ${JSON.stringify(msg)}`);
+        window.parent.postMessage(msg, '*');
       }
     }
 
-    auth.onAuthStateChanged(user => {
-      log(`👤 Estado de auth alterado: ${user ? user.uid : 'logout'}`);
-      updateUI(user);
+    function atualizarStatus(user) {
+      if (user) {
+        statusDiv.textContent = `✅ Logado! (${user.uid})`;
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ uid: user.uid }));
+      } else {
+        statusDiv.textContent = '🚫 Deslogado';
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+      }
+      enviarAuthParaPai(user);
+    }
+
+    function fazerLogin() {
+      if (!auth) return;
+      auth.signInAnonymously()
+        .then(() => log("🔓 Login anônimo bem-sucedido"))
+        .catch((e) => log("❌ Erro no login: " + e.message));
+    }
+
+    function fazerLogout() {
+      if (!auth) return;
+      auth.signOut()
+        .then(() => log("🔒 Logout realizado"))
+        .catch((e) => log("❌ Erro no logout: " + e.message));
+    }
+
+    // Receber mensagens do Site B
+    window.addEventListener("message", (event) => {
+      if (event.data && event.data.type === "pedir-auth") {
+        log("📨 Mensagem recebida do parent: pedir-auth");
+        if (auth && auth.currentUser) {
+          enviarAuthParaPai(auth.currentUser);
+        }
+      }
     });
 
-    document.getElementById('login').onclick = () => {
-      log("🔑 Iniciando login com popup...");
-      const provider = new firebase.auth.GoogleAuthProvider();
-      auth.signInWithPopup(provider).then(result => {
-        log(`✅ Login realizado: ${result.user.uid}`);
-      }).catch(err => {
-        log(`❌ Erro no login: ${err.message}`);
-      });
-    };
+    // Carrega o firebaseConfig do Worker
+    fetch('https://broken-silence-aaa9.2gabrielekaline.workers.dev')
+      .then(response => response.json())
+      .then(firebaseConfig => {
+        firebase.initializeApp(firebaseConfig);
+        auth = firebase.auth();
+        log("✅ Firebase inicializado via Worker!");
 
-    document.getElementById('logout').onclick = () => {
-      log("🚪 Fazendo logout...");
-      auth.signOut().then(() => {
-        log("✅ Logout realizado");
+        firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+          .then(() => {
+            log("💾 Persistência LOCAL definida.");
+          })
+          .catch((error) => {
+            log("⚠️ Erro na persistência: " + error.message);
+          });
+
+        auth.onAuthStateChanged((user) => {
+          if (user) {
+            log("👤 Usuário autenticado: " + user.uid);
+          } else {
+            log("👥 Nenhum usuário logado");
+          }
+          atualizarStatus(user);
+        });
+      })
+      .catch((error) => {
+        log("❌ Erro ao carregar Firebase config: " + error.message);
       });
-    };
   </script>
 </body>
 </html>
