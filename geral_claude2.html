@@ -2,6 +2,8 @@
 <html lang="pt-BR">
 <!--teste-->
 <head>
+    <meta http-equiv="Access-Control-Allow-Origin" content="https://gabrielalmeidac3.github.io">
+    <meta http-equiv="Permissions-Policy" content="interest-cohort=()">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Curso de Violão do Zero ao Repertório</title>
@@ -44,7 +46,18 @@
                     console.error("Erro ao definir persistência:", error);
                 });
 
-            
+                window.addEventListener('message', (event) => {
+                if (event.origin !== 'https://gabrielalmeidac3.github.io') return;
+                if (event.data.type === 'checkAuth') {
+                    firebase.auth().onAuthStateChanged(user => {
+                    event.source.postMessage({
+                        type: 'authStatus',
+                        isLoggedIn: !!user,
+                        user: user ? { email: user.email, uid: user.uid } : null
+                    }, event.origin);
+                    });
+                }
+                }, false);
             
 
             // Agora você pode usar 'auth' e 'db' normalmente
@@ -77,7 +90,7 @@
 
                     // Adiciona listener para postMessage do Site B
                     window.addEventListener('message', (event) => {
-                        const targetOrigin = 'http://127.0.0.1:5501';
+                        const targetOrigin = 'https://gabrielalmeidac3.github.io';
                         if (event.origin !== targetOrigin) {
                             return;
                         }
@@ -93,7 +106,7 @@
                     // Envia siteAReady se estiver em iframe
                     if (window !== window.parent) {
                         try {
-                            window.parent.postMessage({ type: 'siteAReady' }, 'http://127.0.0.1:5501');
+                            window.parent.postMessage({ type: 'siteAReady' }, 'https://gabrielalmeidac3.github.io');
                         } catch (error) {
                             console.error("Erro ao enviar siteAReady:", error);
                         }
@@ -148,7 +161,7 @@
                         
                         // Listener para postMessage quando não logado
                         window.addEventListener('message', (event) => {
-                            const targetOrigin = 'http://127.0.0.1:5501';
+                            const targetOrigin = 'https://gabrielalmeidac3.github.io';
                             if (event.origin !== targetOrigin) {
                                 return;
                             }
@@ -164,7 +177,7 @@
                         // Envia siteAReady se estiver em iframe
                         if (window !== window.parent) {
                             try {
-                                window.parent.postMessage({ type: 'siteAReady' }, 'http://127.0.0.1:5501');
+                                window.parent.postMessage({ type: 'siteAReady' }, 'https://gabrielalmeidac3.github.io');
                             } catch (error) {
                                 console.error("Erro ao enviar siteAReady:", error);
                             }
