@@ -49,6 +49,14 @@
 
             // Agora você pode usar 'auth' e 'db' normalmente
             console.log('Firebase inicializado com configuração segura!');
+            // Envia siteAReady se estiver em iframe
+            if (window !== window.parent) {
+                try {
+                    window.parent.postMessage({ type: 'siteAReady' }, 'https://gabrielalmeidac3.github.io');
+                } catch (error) {
+                    console.error("Erro ao enviar siteAReady:", error);
+                }
+            }
             
             
   
