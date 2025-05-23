@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Site A - Login</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+</head>
+<body>
+  <h1>🔐 Site A - Login</h1>
+  <button id="loginButton">Entrar anonimamente</button>
+  <p id="status">Status: Carregando...</p>
+
+  <script>
+    console.log("[Site A] Iniciando...");
+
+    let auth;
+
+    fetch('https://broken-silence-aaa9.2gabrielekaline.workers.dev')
+      .then(response => response.json())
+      .then(firebaseConfig => {
+        console.log("[Site A] Firebase config recebida:", firebaseConfig);
+        firebase.initializeApp(firebaseConfig);
+        auth = firebase.auth();
+
+        firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+          .then(() => {
+            console.log("[Site A] 🔐 Persistência LOCAL definida");
+            checkLoginStatus();
+          })
+          .catch(error => {
+            console.error("[Site A] Erro ao definir persistência:", error);
+          });
+      })
+      .catch(err => {
+        console.error("[Site A] Erro ao buscar config do Firebase:", err);
+      });
+
+    document.getElementById("loginButton").addEventListener("click", () => {
+      auth.signInAnonymously()
+        .then(() => {
+          console.log("[Site A] ✅ Login anônimo realizado");
+          document.getElementById("status").innerText = "Status: Logado!";
+        })
+        .catch(error => {
+          console.error("[Site A] ❌ Erro no login:", error);
+        });
+    });
+
+    function checkLoginStatus() {
+      auth.onAuthStateChanged((user) => {
+        if (user) {
+          console.log("[Site A] 🔎 Usuário está logado:", user);
+          document.getElementById("status").innerText = "Status: Logado!";
+        } else {
+          console.log("[Site A] 🚫 Nenhum usuário logado");
+          document.getElementById("status").innerText = "Status: Não logado";
+        }
+      });
+    }
+
+    // Escuta mensagens do Site B
+    window.addEventListener("message", (event) => {
+      console.log("[Site A] 📩 Mensagem recebida de:", event.origin, event.data);
+      if (event.data.type === "checkLogin") {
+        auth.onAuthStateChanged((user) => {
+          const response = {
+            type: "loginStatus",
+            loggedIn: !!user,
+            uid: user?.uid || null,
+            timestamp: new Date().toISOString()
+          };
+          console.log("[Site A] 📤 Enviando status de login:", response);
+          event.source.postMessage(response, event.origin);
+        });
+      }
+    });
+  </script>
+</body>
+</html>
