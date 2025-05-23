@@ -34,7 +34,7 @@
     const isInIframe = window !== window.parent;
     addLog(`[Site A] 📱 Está em iframe: ${isInIframe}`);
 
-    fetch('https://broken-silence-aaa9.workers.dev')
+    fetch('https://broken-silence-aaa9.2gabrielekaline.workers.dev')
       .then(response => {
         addLog("[Site A] 📡 Resposta da API recebida");
         return response.json();
