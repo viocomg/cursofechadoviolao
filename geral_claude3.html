@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<!--teste-->
+<head>
+    <meta http-equiv="Access-Control-Allow-Origin" content="https://gabrielalmeidac3.github.io">
+    <meta http-equiv="Permissions-Policy" content="interest-cohort=()">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Curso de Violão do Zero ao Repertório</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <div id="content"></div> 
+    <script>
+    let auth;
+    let db;
+        fetch('https://broken-silence-aaa9.2gabrielekaline.workers.dev')
+          .then(response => response.json())
+          .then(firebaseConfig => {
+            // Inicializa o Firebase com a configuração recebida do Worker
+            firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            db = firebase.firestore();
+            // Define persistência local para compartilhamento entre sites
+            firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+                .then(() => {
+                    console.log("🔐 Persistência LOCAL definida no Site A");
+                })
+                .catch((error) => {
+                    console.error("Erro ao definir persistência:", error);
+                });
+                
+            // Agora você pode usar 'auth' e 'db' normalmente
+            console.log('Firebase inicializado com configuração segura!');
+            
+            
+            
+  
+            auth.onAuthStateChanged((user) => {
+                if (user) {
+                    
+                    console.log('onAuthStateChanged disparado', user);
+                    // Executa testes automáticos
+                    
+                    user.getIdToken(/* forceRefresh= */ true).then((token) => {
+                        console.log('Token gerado:', token);
+                    }).catch((error) => {
+                        console.error('Erro ao gerar token:', error);
+                    });
+
+                    const telefone = user.email.split('@')[0];
+                    console.log(`Usuário logado: ${user.email}, UID: ${user.uid}`);
+
+                    // Adiciona listener para postMessage do Site B
+                    window.addEventListener('message', (event) => {
+                        if (event.origin !== 'https://gabrielalmeidac3.github.io') return;
+                        if (event.data.type === 'checkAuth') {
+                            // Resposta direta já que estamos dentro do onAuthStateChanged(user)
+                            event.source.postMessage({
+                                type: 'authStatus',
+                                isLoggedIn: true,
+                                user: { email: user.email, uid: user.uid }
+                            }, event.origin);
+                        }
+                    }, false);
+
+                    // Envia siteAReady se estiver em iframe
+                    if (window !== window.parent) {
+                        try {
+                            window.parent.postMessage({ type: 'siteAReady' }, 'https://gabrielalmeidac3.github.io');
+                        } catch (error) {
+                            console.error("Erro ao enviar siteAReady:", error);
+                        }
+                    }
+                    console.log(`Usuário logado: ${user.email}, UID: ${user.uid}`);
+
+                    db.collection('alunos').where('telefone', '==', telefone).get()
+                        .then((snapshot) => {
+                            if (!snapshot.empty && snapshot.docs[0].data().acesso === 'Liberado') {
+                                fetch('geral2.html')
+                                .then(response => response.text())
+                                .then(data => {
+                                    const parser = new DOMParser();
+                                    const doc = parser.parseFromString(data, 'text/html');
+
+                                    // Substitui o <head> (opcional, se você quiser usar o head do geral2.html)
+                                    document.head.innerHTML = doc.head.innerHTML;
+
+                                    // Substitui apenas o conteúdo principal (evita conflitos com Firebase, etc.)
+                                    const newContent = doc.body;
+                                    document.body.innerHTML = newContent.innerHTML;
+
+                                    // Executa todos os scripts do geral2.html (inline e externos)
+                                    const scripts = doc.querySelectorAll('script');
+                                    scripts.forEach(oldScript => {
+                                    const newScript = document.createElement('script');
+
+                                    if (oldScript.src) {
+                                        // Script externo
+                                        newScript.src = oldScript.src;
+                                        newScript.async = false;
+                                    } else {
+                                        // Script inline
+                                        newScript.textContent = oldScript.textContent;
+                                    }
+
+                                    document.body.appendChild(newScript);
+                                    });
+                                })
+                                .catch(error => console.error('Erro ao carregar geral2.html:', error));
+
+
+                            } else {
+                                alert('Acesso negado.');
+                                auth.signOut();
+                                window.location.href = 'geral_protegido.html';
+                            }
+                        })
+                        .catch(error => console.error('Erro ao verificar aluno:', error));
+                    } 
+        });
+
+          })
+          .catch(error => console.error('Erro ao carregar configuração do Firebase:', error));
+
+
+        function logout() {
+            auth.signOut().then(() => window.location.href = 'geral_protegido.html');
+        }
+
+        
+
+    
+    </script>
+</body>
+</html>
